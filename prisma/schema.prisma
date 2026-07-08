@@ -1,0 +1,287 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  WORKER
+  EMPLOYER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum ShiftType {
+  DAY
+  NIGHT
+  ROTATIONAL
+  GENERAL
+}
+
+enum JobType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+}
+
+enum JobStatus {
+  ACTIVE
+  CLOSED
+  EXPIRED
+  SUSPENDED
+}
+
+enum AppStatus {
+  APPLIED
+  SHORTLISTED
+  REJECTED
+  HIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum PaymentPurpose {
+  PLAN_PURCHASE
+  FEATURED_JOB
+}
+
+enum TargetType {
+  JOB
+  WORKER
+  EMPLOYER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+}
+
+enum NotifType {
+  APPLICATION
+  SHORTLIST
+  HIRE
+  REJECT
+  SYSTEM
+}
+
+model User {
+  id        String     @id @default(cuid())
+  phone     String     @unique
+  name      String?
+  role      Role       @default(WORKER)
+  city      String?
+  status    UserStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+
+  workerProfile   WorkerProfile?
+  employerProfile EmployerProfile?
+  jobs            Job[]
+  applications    Application[]
+  payments        Payment[]
+  reports         Report[]
+  notifications   Notification[]
+
+  @@index([role])
+  @@index([status])
+  @@index([city])
+}
+
+model WorkerProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  trade           String?
+  experienceYears Int?
+  expectedSalary  Int?
+  availableFrom   DateTime?
+  languages       String[]
+  photoUrl        String?
+  idDocUrl        String?
+  isVerified      Boolean  @default(false)
+  rating          Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([trade])
+  @@index([isVerified])
+}
+
+model EmployerProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  companyName   String?
+  industry      String?
+  gstNumber     String?
+  address       String?
+  isVerified    Boolean  @default(false)
+  verifiedAt    DateTime?
+  rating        Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobCredits JobCredit[]
+
+  @@index([isVerified])
+  @@index([industry])
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  employerId  String
+  title       String
+  description String?
+  category    String?
+  location    String?
+  city        String    @default("Hyderabad")
+  salaryMin   Int?
+  salaryMax   Int?
+  vacancies   Int       @default(1)
+  shiftType   ShiftType @default(GENERAL)
+  jobType     JobType   @default(FULL_TIME)
+  status      JobStatus @default(ACTIVE)
+  isFeatured  Boolean   @default(false)
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  employer     User          @relation(fields: [employerId], references: [id], onDelete: Cascade)
+  applications Application[]
+  views        JobView[]
+
+  @@index([employerId])
+  @@index([status])
+  @@index([category])
+  @@index([city])
+  @@index([shiftType])
+  @@index([isFeatured])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+
+model JobView {
+  id        String   @id @default(cuid())
+  jobId     String
+  viewedAt  DateTime @default(now())
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([viewedAt])
+}
+
+model Application {
+  id        String   @id @default(cuid())
+  jobId     String
+  workerId  String
+  status    AppStatus @default(APPLIED)
+  note      String?
+  appliedAt DateTime @default(now())
+
+  job    Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  worker User @relation(fields: [workerId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([workerId])
+  @@index([status])
+  @@index([appliedAt])
+}
+
+model Plan {
+  id              String   @id @default(cuid())
+  name            String   @unique
+  price           Int
+  durationDays    Int
+  jobPostLimit    Int
+  isFeatured      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  payments Payment[]
+}
+
+model JobCredit {
+  id              String   @id @default(cuid())
+  employerId      String   @unique
+  remaining       Int      @default(0)
+  expiryDate      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  employer EmployerProfile @relation(fields: [employerId], references: [userId])
+}
+
+model Payment {
+  id                String          @id @default(cuid())
+  userId            String
+  planId            String?
+  amount            Int
+  status            PaymentStatus   @default(PENDING)
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  purpose           PaymentPurpose?
+  createdAt         DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan Plan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([razorpayOrderId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  reporterId  String
+  targetType  TargetType
+  targetId    String
+  reason      String
+  status      ReportStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([targetType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      NotifType @default(SYSTEM)
+  read      Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+}
+
+model City {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+}
