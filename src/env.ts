@@ -18,7 +18,10 @@ const envSchema = z.object({
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 });
 
-function validateEnv() {
+let cached: z.infer<typeof envSchema> | null = null;
+
+function validateEnv(): z.infer<typeof envSchema> {
+  if (cached) return cached;
   const result = envSchema.safeParse(process.env);
   if (!result.success) {
     console.error("❌ Invalid environment variables:");
@@ -29,9 +32,15 @@ function validateEnv() {
       throw new Error("Invalid environment variables. Check server logs.");
     }
     console.warn("⚠ Running with missing env vars in development mode.");
-    return process.env as unknown as z.infer<typeof envSchema>;
+    cached = process.env as unknown as z.infer<typeof envSchema>;
+    return cached;
   }
-  return result.data;
+  cached = result.data;
+  return cached;
 }
 
-export const env = validateEnv();
+export const env = new Proxy({} as z.infer<typeof envSchema>, {
+  get(_, key) {
+    return validateEnv()[key as keyof z.infer<typeof envSchema>];
+  },
+});
