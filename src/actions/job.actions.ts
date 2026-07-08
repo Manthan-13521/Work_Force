@@ -6,7 +6,7 @@ import { revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { JobStatus } from "@/generated/prisma/enums";
-import type * as Prisma from "@/generated/prisma/internal/prismaNamespace";
+import type { Prisma } from "@/generated/prisma/client";
 import { buildPaginatedResponse, PAGE_SIZE } from "@/lib/pagination";
 import { updateJobStatusSchema } from "@/lib/schemas";
 

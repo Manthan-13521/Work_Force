@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { revalidateTag } from "next/cache";
-import type * as Prisma from "@/generated/prisma/internal/prismaNamespace";
+import type { Prisma } from "@/generated/prisma/client";
 import { buildPaginatedResponse, PAGE_SIZE } from "@/lib/pagination";
 import {
   toggleUserStatusSchema,

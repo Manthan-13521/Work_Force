@@ -19,8 +19,7 @@ export function buildPaginatedResponse<T>(
 } {
   const hasMore = items.length > limit;
   const data = hasMore ? items.slice(0, limit) : items;
-  const nextCursor = hasMore && data.length > 0
-    ? (data[data.length - 1] as { id: string }).id
-    : null;
+  const last = data[data.length - 1] as Record<string, unknown> | undefined;
+  const nextCursor = hasMore && typeof last?.id === "string" ? last.id : null;
   return { data, nextCursor, hasMore };
 }
