@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/shared/badge";
 import { getJobById } from "@/actions/job.actions";
+import { trackJobView } from "@/actions/analytics.actions";
 import { getCurrentUser } from "@/lib/auth";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Building, MapPin, Clock, Briefcase, CheckCircle, IndianRupee, Calendar } from "lucide-react";
@@ -15,8 +16,7 @@ export default async function JobDetailPage(props: { params: Promise<{ id: strin
 
   if (!job) notFound();
 
-  // Track view asynchronously
-  import("@/actions/analytics.actions").then(({ trackJobView }) => trackJobView(id));
+  trackJobView(id).catch(() => {});
 
   const isOwner = user?.id === job.employerId;
   const canApply = user?.role === "WORKER" && job.status === "ACTIVE";

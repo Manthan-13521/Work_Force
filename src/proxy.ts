@@ -28,7 +28,7 @@ const publicPaths = [
   "/verify-otp",
 ];
 
-const apiWhitelist = ["/api/otp", "/api/webhooks", "/api/logout"];
+const apiWhitelist = ["/api/health", "/api/otp", "/api/webhooks", "/api/logout"];
 
 const rolePrefixes: Record<string, string[]> = {
   WORKER: ["/worker"],
