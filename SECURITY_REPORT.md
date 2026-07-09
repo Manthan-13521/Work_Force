@@ -1,71 +1,156 @@
-# Security Report — Workforce V3
+# Security Audit Report — Workforce RC
 
-## Attack Surface & Testing Results
+**Date:** 2026-07-09
+**Scope:** All source files in `src/` and `app/`
 
-### Race Conditions (4 found and fixed)
-| Vulnerability | Vector | Impact | Fix |
-|--------------|--------|--------|-----|
-| Webhook double credit | Duplicate Razorpay webhook delivery | Free job credits | Atomic `updateMany` with `status: "PENDING"` inside transaction |
-| Payment double credit | Rapid client-side `verifyPayment` calls | Free job credits | Same atomic pattern as webhook |
-| Negative job credits | Two parallel `postJob` calls | Jobs posted without paying | Interactive transaction + atomic `updateMany` with `remaining: { gte: 1 }` |
-| Duplicate applications | Two parallel `applyToJob` calls | Spam applications | `@@unique([jobId, workerId])` constraint + Prisma P2002 catch |
+---
 
-### Authorization (2 issues fixed)
-| Issue | Vector | Fix |
-|-------|--------|-----|
-| ADMIN can't updateJobStatus | ADMIN role blocked by `employerId: user.id` filter | Role-aware where clause |
-| Employer registration ignores city | `completeEmployerProfile` didn't save city | Added `city: parsed.data.city` to user update |
+## Security Findings by Category
 
-### CSRF
-- **Public/whitelist endpoints**: CSRF check skipped intentionally (OTP, health, webhooks)
-- **Authenticated endpoints**: Origin/referer validation via middleware
-- **Risk**: Low — OTP endpoints are rate-limited; authenticated routes have origin check
+### 1. Content Security Policy (CSP)
 
-### XSS
-- CSP headers set: `default-src 'self'; script-src 'self' 'unsafe-inline'`
-- All user content rendered via Server Components (no dangerouslySetInnerHTML)
-- No raw HTML rendering in any component
+**Verdict: PASS**
 
-### Upload Security
-| Check | Status |
-|-------|--------|
-| MIME validation | ✓ Server-side check against strict allowlist |
-| File size limit | ✓ 5MB max enforced before any processing |
-| File extension from MIME | ✓ Cloudinary `allowed_formats` parameter |
-| Path traversal | ✓ Cloudinary handles storage; local fallback uses sanitized path |
-| MIME spoofing | ✓ Enhanced: uses `Set.has()` lookup, Cloudinary validates on its end |
+CSP header configured in `src/proxy.ts` (lines 19-22):
+```
+default-src 'self'; script-src 'self' 'unsafe-inline' ... ; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:
+```
 
-### Rate Limiting
-| Endpoint | Limit | Status |
+Razorpay checkout domain whitelisted: `https://checkout.razorpay.com`. `unsafe-eval` gated to dev only.
+
+### 2. HSTS (Strict-Transport-Security)
+
+**Verdict: PASS**
+
+Configured in `src/proxy.ts` (line 13):
+```
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+```
+
+2-year max-age with preload — industry standard.
+
+### 3. Permissions-Policy
+
+**Verdict: PASS**
+
+Configured in `src/proxy.ts` (line 14):
+```
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self)
+```
+
+Sensitive permissions disabled. Payment allowed on same-origin for Razorpay.
+
+### 4. CSRF Protection
+
+**Verdict: PASS (MEDIUM — no token-based CSRF)**
+
+- Origin/referer header validation in `src/proxy.ts` (lines 108-113)
+- No CSRF token mechanism — relies solely on Origin/Referer check
+- Public API routes bypass CSRF (acceptable for rate-limited endpoints)
+
+### 5. RBAC (Role-Based Access Control)
+
+**Verdict: PASS**
+
+- Middleware-level enforcement in `src/proxy.ts` (lines 126-130)
+- All 11 server action files call `requireAuth()` with specific role requirements
+- Ownership checks on job/application updates
+
+### 6. JWT/Session Security
+
+**Verdict: PASS**
+
+- JWT signed with 32+ char secret via `jsonwebtoken` (7-day expiry)
+- Cookie flags: `httpOnly: true`, `secure: true` (prod), `sameSite: strict`, `maxAge: 604800`
+
+### 7. Rate Limiting
+
+**Verdict: PASS (MEDIUM — concurrency race condition in Redis path)**
+
+| Endpoint | Limit | Window |
 |----------|-------|--------|
-| OTP send | 3/60s per phone + 10/60s per IP | ✓ Verified working (returns 429) |
-| OTP verify | 5/300s per phone | ✓ Implemented |
+| `POST /api/otp/send` (IP) | 10 | 60s |
+| `POST /api/otp/send` (Phone) | 3 | 60s |
+| `POST /api/otp/verify` (Phone) | 5 | 300s |
+| `POST /api/logout` (IP) | 10 | 60s |
+| `POST /api/webhooks/razorpay` (IP) | 10 | 60s |
 
-### Authentication
-| Check | Status |
-|-------|--------|
-| JWT token in httpOnly cookie | ✓ |
-| JWT expiry (7 days) | ✓ |
-| Suspended user rejection | ✓ at auth layer |
-| Token verification in middleware | ✓ |
-| Role enforcement in middleware | ✓ |
-| Role enforcement in server actions | ✓ via `requireAuth([roles])` |
+**Note:** Redis rate limiter has a TOCTOU race condition (check-then-increment). In-memory fallback is per-instance (not shared across Vercel instances).
 
-### Access Control
-- **IDOR testing**: `getJobApplications` checks `job.employerId !== user.id` before returning data
-- **UpdateApplicationStatus**: Checks `application.job.employerId !== user.id`
-- **Admin actions**: All gated by `requireAuth(["ADMIN"])`
+### 8. Upload Validation
 
-### OTP Security (Development Mode)
-- In development, OTP is auto-accepted (simulated SMS)
-- In production, MSG91 integration sends real SMS — implement after API keys configured
-- OTP stored in Redis with 600s TTL, single-use (deleted after verification)
+**Verdict: PASS**
 
-### Dependency Vulnerabilities
-- 5 moderate severity vulnerabilities from `npm audit`
-- Risk: Low — all are dev dependencies or transitive
+- File type whitelist: JPEG, PNG, WebP only
+- File size limit: 5MB
+- Cloudinary integration as primary upload (server-side validation)
+- Local filesystem fallback with `crypto.randomUUID()` filenames (no path traversal)
 
-## Remaining Medium Risks
-1. **No JWT refresh/rotation** — tokens valid for 7 days with no rotation
-2. **No API-wide rate limiting** — only OTP endpoints are rate-limited
-3. **Webhook secret stored in env** — acceptable for production with proper secret management
+### 9. XSS Prevention
+
+**Verdict: PASS**
+
+- **No `dangerouslySetInnerHTML`** in any source file
+- All user content rendered through React's automatic HTML escaping
+- Search parameters reflected via controlled form inputs, not URL interpolation
+
+### 10. SQL Injection
+
+**Verdict: PASS**
+
+- All queries use Prisma's parameterized query API
+- `$queryRaw` used only in static queries (`SELECT 1`) — no user input
+- No `$queryRawUnsafe` or `$executeRawUnsafe` in application code
+- Search uses Prisma's `contains` operator (parameterized)
+
+### 11. npm Audit
+
+**Verdict: FAIL (MODERATE)** — 5 moderate vulnerabilities
+
+| Vulnerability | Package | Severity | Fix |
+|--------------|---------|----------|-----|
+| XSS in CSS stringify | postcss (via next) | MODERATE | Update next (major) |
+| Middleware bypass via slashes | @hono/node-server (via prisma) | MODERATE | Update prisma (major) |
+
+**No critical or high severity vulnerabilities.**
+
+### 12. Environment Variable Exposure
+
+**Verdict: PASS**
+
+- `NEXT_PUBLIC_RAZORPAY_KEY_ID` — intentionally public (required by Razorpay client SDK)
+- `NEXT_PUBLIC_APP_URL` — publicly accessible
+- No sensitive secrets (`JWT_SECRET`, `DATABASE_URL`, `CLOUDINARY_API_SECRET`, etc.) are prefixed with `NEXT_PUBLIC_`
+
+---
+
+## Security Scorecard
+
+| # | Area | Verdict | Severity |
+|---|------|---------|----------|
+| 1 | CSP | PASS | INFO |
+| 2 | HSTS | PASS | INFO |
+| 3 | Permissions-Policy | PASS | INFO |
+| 4 | CSRF | PASS | MEDIUM |
+| 5 | RBAC | PASS | INFO |
+| 6 | JWT/Session | PASS | INFO |
+| 7 | Rate Limiting | PASS | MEDIUM |
+| 8 | Upload Validation | PASS | INFO |
+| 9 | XSS Prevention | PASS | INFO |
+| 10 | SQL Injection | PASS | INFO |
+| 11 | npm audit | **FAIL** | **MODERATE** |
+| 12 | Env Exposure | PASS | INFO |
+
+**Pass rate: 11/12 (91.7%)**
+
+---
+
+## Verdict
+
+```
+╔══════════════════════════════════════════════════╗
+║        SECURITY AUDIT: CONDITIONAL PASS (A-)     ║
+║        11/12 passed · 0 critical · 0 high        ║
+║        1 moderate (npm audit) · 2 medium issues  ║
+╚══════════════════════════════════════════════════╝
+```
