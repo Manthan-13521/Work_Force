@@ -65,7 +65,7 @@ export default function LoginPage() {
         {step === "phone" ? (
           <form onSubmit={handleRequestOTP} className="space-y-4">
             <PhoneInput value={phone} onChange={setPhone} error={error} />
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
             <Button type="submit" className="w-full" loading={loading}>
               Send OTP
             </Button>
@@ -90,7 +90,7 @@ export default function LoginPage() {
                 autoFocus
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
             <Button type="submit" className="w-full" loading={loading}>
               Verify & Login
             </Button>

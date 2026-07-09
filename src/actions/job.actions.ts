@@ -9,7 +9,7 @@ import type { JobStatus } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
 import { buildPaginatedResponse, PAGE_SIZE } from "@/lib/pagination";
 import { updateJobStatusSchema } from "@/lib/schemas";
-
+import { backgroundTasks } from "@/lib/background";
 const postJobSchema = z.object({
   title: z.string().min(3),
   description: z.string().optional(),
@@ -88,21 +88,20 @@ export async function updateJobStatus(jobId: string, status: JobStatus) {
   const parsed = updateJobStatusSchema.safeParse({ jobId, status: status as string });
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
 
+  const newStatus = parsed.data.status as JobStatus;
+
+  if (user.role !== "ADMIN") {
+    const allowed: JobStatus[] = ["ACTIVE", "CLOSED"];
+    if (!allowed.includes(newStatus)) {
+      return { error: "Employers can only close or reactivate their jobs" };
+    }
+  }
+
   const where = user.role === "ADMIN"
     ? { id: parsed.data.jobId }
     : { id: parsed.data.jobId, employerId: user.id };
-  await prisma.job.update({ where, data: { status: parsed.data.status as JobStatus } });
+  await prisma.job.update({ where, data: { status: newStatus } });
   revalidateTag("jobs", "max");
-}
-
-export async function markJobExpired() {
-  await prisma.job.updateMany({
-    where: {
-      status: "ACTIVE",
-      expiresAt: { lte: new Date() },
-    },
-    data: { status: "EXPIRED" },
-  });
 }
 
 export async function getJobs(
@@ -115,7 +114,7 @@ export async function getJobs(
   },
   pagination?: { cursor?: string; limit?: number }
 ) {
-  await markJobExpired();
+  await backgroundTasks.markExpiredJobs();
   const where: Prisma.JobWhereInput = { status: "ACTIVE" };
 
   if (filters?.category) where.category = filters.category;
@@ -160,7 +159,7 @@ export async function getJobs(
 }
 
 export async function getJobById(jobId: string) {
-  await markJobExpired();
+  await backgroundTasks.markExpiredJobs();
   return prisma.job.findUnique({
     where: { id: jobId },
     select: {
@@ -190,7 +189,7 @@ export async function getJobById(jobId: string) {
 
 export async function getEmployerJobs(pagination?: { cursor?: string; limit?: number }) {
   const user = await requireAuth(["EMPLOYER"]);
-  await markJobExpired();
+  await backgroundTasks.markExpiredJobs();
   const limitVal = pagination?.limit ?? PAGE_SIZE;
   const items = await prisma.job.findMany({
     where: { employerId: user.id },

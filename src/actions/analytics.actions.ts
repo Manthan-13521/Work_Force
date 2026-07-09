@@ -2,29 +2,30 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { backgroundTasks } from "@/lib/background";
+import { cached, cacheKey } from "@/lib/cache";
 
 export async function getPublicStats() {
-  const [activeWorkers, verifiedEmployers, totalHires] = await Promise.all([
-    prisma.user.count({ where: { role: "WORKER", status: "ACTIVE" } }),
-    prisma.employerProfile.count({ where: { isVerified: true } }),
-    prisma.application.count({ where: { status: "HIRED" } }),
-  ]);
+  return cached(cacheKey("public-stats"), async () => {
+    const [activeWorkers, verifiedEmployers, totalHires] = await Promise.all([
+      prisma.user.count({ where: { role: "WORKER", status: "ACTIVE" } }),
+      prisma.employerProfile.count({ where: { isVerified: true } }),
+      prisma.application.count({ where: { status: "HIRED" } }),
+    ]);
 
-  return {
-    activeWorkers,
-    verifiedEmployers,
-    totalHires,
-  };
+    return { activeWorkers, verifiedEmployers, totalHires };
+  }, { ttl: 300 });
 }
 
 export async function trackJobView(jobId: string) {
   await prisma.jobView.create({ data: { jobId } });
+  await backgroundTasks.cleanupOldJobViews();
 }
 
 export async function getEmployerAnalytics() {
   const user = await requireAuth(["EMPLOYER"]);
 
-  const [jobs, totalShortlisted, totalHired, totalApplicationsCount] = await Promise.all([
+  const [jobs, applicationCounts] = await Promise.all([
     prisma.job.findMany({
       where: { employerId: user.id },
       select: {
@@ -36,14 +37,31 @@ export async function getEmployerAnalytics() {
       },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.application.count({ where: { job: { employerId: user.id }, status: "SHORTLISTED" } }),
-    prisma.application.count({ where: { job: { employerId: user.id }, status: "HIRED" } }),
-    prisma.application.count({ where: { job: { employerId: user.id } } }),
+    prisma.application.groupBy({
+      by: ["jobId", "status"],
+      where: { job: { employerId: user.id } },
+      _count: true,
+    }),
   ]);
+
+  const jobIds = jobs.map((j) => j.id);
+  const countsByJob: Record<string, Record<string, number>> = {};
+  for (const jobId of jobIds) {
+    countsByJob[jobId] = {};
+  }
+  for (const row of applicationCounts) {
+    if (!countsByJob[row.jobId]) countsByJob[row.jobId] = {};
+    countsByJob[row.jobId][row.status] = row._count;
+  }
 
   const totalJobs = jobs.length;
   const totalViews = jobs.reduce((sum, j) => sum + j._count.views, 0);
-  const totalApplications = totalApplicationsCount;
+  const totalApplications = jobIds.reduce((sum, id) => {
+    const c = countsByJob[id];
+    return sum + (c?.APPLIED || 0) + (c?.SHORTLISTED || 0) + (c?.HIRED || 0) + (c?.REJECTED || 0);
+  }, 0);
+  const totalShortlisted = jobIds.reduce((sum, id) => sum + (countsByJob[id]?.SHORTLISTED || 0), 0);
+  const totalHired = jobIds.reduce((sum, id) => sum + (countsByJob[id]?.HIRED || 0), 0);
   const conversionRate = totalApplications > 0 ? ((totalHired / totalApplications) * 100).toFixed(1) : "0";
 
   return {
@@ -58,8 +76,8 @@ export async function getEmployerAnalytics() {
       title: j.title,
       views: j._count.views,
       applications: j._count.applications,
-      shortlisted: 0,
-      hired: 0,
+      shortlisted: countsByJob[j.id]?.SHORTLISTED || 0,
+      hired: countsByJob[j.id]?.HIRED || 0,
       status: j.status,
       createdAt: j.createdAt,
     })),

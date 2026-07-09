@@ -2,11 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/env";
 import crypto from "crypto";
+import { logger } from "@/lib/logger";
+import { checkRateLimit, getClientIp } from "@/lib/redis";
 
 export async function POST(request: NextRequest) {
   try {
     if (!env.RAZORPAY_KEY_SECRET) {
       return NextResponse.json({ error: "Not configured" }, { status: 500 });
+    }
+
+    const ip = getClientIp(request);
+    const allowed = await checkRateLimit(`rate:webhook:${ip}`, 10, 60);
+    if (!allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
     const body = await request.text();
@@ -74,7 +82,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Webhook error:", error);
+    logger.error("Webhook processing failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 }

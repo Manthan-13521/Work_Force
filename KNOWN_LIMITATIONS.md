@@ -1,46 +1,49 @@
-# Known Limitations — Workforce V3 RC1
+# Known Limitations & Accepted Risks
 
-## Deferred Items (not bugs)
+## Performance
 
-### 1. JWT Refresh / Rotation
-- **Issue**: JWT tokens are issued with a 7-day expiry and no refresh mechanism.
-- **Impact**: Users must re-authenticate after 7 days. No ability to revoke individual sessions server-side.
-- **Priority**: Medium — acceptable for MVP scale.
-- **Suggested fix**: Add `/api/auth/refresh` endpoint that issues a new JWT when the old one is within 24h of expiry. Store a refresh token hash in the database.
+| Limitation | Impact | When to Address |
+|------------|--------|----------------|
+| No full-text search on jobs (uses `contains` + `mode: insensitive`) | Slower on large datasets (>10K jobs) | After launch, add `pg_trgm` extension + GIN index |
+| No CDN for static assets | Higher TTFB for global users | When serving users outside India |
+| No persistent Redis in free tier | Rate limits/OTP reset on Vercel restart | When upgrading to paid Upstash plan |
+| No database read replicas | Read queries compete with writes | At >500 concurrent users |
+| `getWorkers` query sorts in memory | Poor performance with 10K+ verified workers | Add pagination with cursor support |
+| Bundle size not optimized yet | Higher initial load time | Before public launch |
 
-### 2. API-wide Rate Limiting
-- **Issue**: Only OTP endpoints (`/api/otp/send`) have rate limiting. Other unauthenticated endpoints (`/api/health`, `/api/webhooks/razorpay`) are unrated.
-- **Impact**: Health endpoint is harmless. Webhook is HMAC-protected. Low risk.
-- **Priority**: Medium — add IP-based rate limiting to all API routes via middleware or a separate rate-limiting layer.
-- **Suggested fix**: Add Upstash Redis rate limiting to the middleware with per-IP tracking for all `/api/*` routes.
+## Scalability
 
-### 3. Integration / E2E Test Coverage
-- **Issue**: 26 unit tests cover pagination, schemas, and utility functions only. No integration tests for auth flows, payment flows, OTP, upload, or multi-step workflows.
-- **Impact**: Manual regression testing required for each deploy.
-- **Priority**: Low — acceptable for RC1. Add Playwright or Vitest integration tests in RC2.
-- **Suggested fix**: Add 10-15 integration tests covering worker registration → OTP → login → job apply → employer verification → payment → hire flow.
+| Limitation | Impact | When to Address |
+|------------|--------|----------------|
+| No background job queue | Cleanup tasks run during HTTP requests | When serverless function timeout becomes an issue |
+| In-memory Redis fallback per instance | Rate limits inconsistent across instances | When deploying multiple Vercel instances |
+| No database read replica | Single point of failure for reads | When DB becomes bottleneck |
+| Serverless function cold starts | Higher latency on infrequent endpoints | When traffic patterns require consistent response times |
 
-### 4. Cloudinary Production Configuration
-- **Issue**: Cloudinary upload is implemented but requires `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` environment variables to be set in production.
-- **Impact**: Falls back to local filesystem upload (works in dev but not on Vercel).
-- **Priority**: High for production deployment — must be configured before going live.
+## Reliability
 
-### 5. MSG91 SMS Production Configuration
-- **Issue**: SMS OTP delivery requires `MSG91_AUTH_KEY`, `MSG91_SENDER_ID`, and `MSG91_TEMPLATE_ID` env vars. In development, OTP is auto-accepted.
-- **Impact**: Without configuration, OTP verification will not send real SMS in production. Users can still authenticate in dev mode.
-- **Priority**: High for production deployment — must be configured before going live.
+| Limitation | Impact | When to Address |
+|------------|--------|----------------|
+| MSG91 circuit breaker + retry | SMS delivery fails silently if MSG91 is down | Already handled — OTP still stored, user sees error |
+| Cloudinary circuit breaker + local fallback | Uploads use local filesystem (lost on redeploy) | Acceptable for MVP — Cloudinary is primary |
+| No database transaction retry for Prisma | Rare deadlock could cause 500 error | Add Prisma retry wrapper if deadlocks appear |
+| No chaos testing done | Unknown behavior under extreme failure | Before enterprise SLA |
 
-### 6. No Database Connection Pool Tuning
-- **Issue**: Prisma uses the default connection pool from `@prisma/adapter-pg`. No custom pool configuration.
-- **Impact**: May be insufficient under high concurrent load (1000+ simultaneous users).
-- **Priority**: Low — monitor in production and add `connection_limit` to connection string if needed.
+## Security (Accepted Risks)
 
-### 7. No Structured Error Tracking
-- **Issue**: Errors are logged via `console.error` with JSON. No Sentry, DataDog, or similar integration.
-- **Impact**: Debugging production issues requires log access.
-- **Priority**: Low — defer to ops layer.
+| Risk | Mitigation | Rationale |
+|------|-----------|-----------|
+| `'unsafe-inline'` in CSP | Common in Next.js apps | Nonce migration is a separate project |
+| Phone numbers visible to employers | Required for contact | Documented in Privacy Policy |
+| No rate limiting on webhook per origin | HMAC signature verification | Razorpay webhooks are signed |
+| JWT tokens valid for 7 days | Short-lived by industry standards | Can be reduced to 24h if needed |
 
-### 8. No Database Migration History
-- **Issue**: Using `prisma db push` instead of `prisma migrate dev` — no migration history tracked.
-- **Impact**: Safe for dev/early production. Switch to migrations for team environments.
-- **Priority**: Low — switch to `prisma migrate` before adding additional team members.
+## Feature Gaps
+
+| Gap | Impact | Priority |
+|-----|--------|----------|
+| No email notifications | Users only get in-app notifications | Medium |
+| No password reset flow | Passwordless auth by design | Low |
+| No export/import of data | Manual data portability | Low |
+| No bulk operations for employers | Must post/edit jobs individually | Medium |
+| No mobile app | PWA serves mobile use cases | Low |

@@ -2,8 +2,9 @@ export const PAGE_SIZE = 20;
 
 export function getPaginationParams(searchParams: URLSearchParams) {
   const cursor = searchParams.get("cursor") || undefined;
+  const rawLimit = Number(searchParams.get("limit"));
   const limit = Math.min(
-    Number(searchParams.get("limit")) || PAGE_SIZE,
+    rawLimit > 0 ? rawLimit : PAGE_SIZE,
     100
   );
   return { cursor, limit };

@@ -1,6 +1,7 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { env } from "@/env";
+import { logger } from "./logger";
 
 declare global {
   var prisma: PrismaClient | undefined;
@@ -9,7 +10,21 @@ declare global {
 function getPrisma(): PrismaClient {
   if (!globalThis.prisma) {
     const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
-    globalThis.prisma = new PrismaClient({ adapter });
+    globalThis.prisma = new PrismaClient({
+      adapter,
+      log: [
+        { level: "warn", emit: "event" },
+        { level: "error", emit: "event" },
+      ],
+    });
+
+    globalThis.prisma.$on("warn" as never, (e: { message: string }) => {
+      logger.warn("Prisma warning", { message: e.message });
+    });
+
+    globalThis.prisma.$on("error" as never, (e: { message: string }) => {
+      logger.error("Prisma error", { message: e.message });
+    });
   }
   return globalThis.prisma;
 }

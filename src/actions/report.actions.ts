@@ -8,11 +8,11 @@ export async function createReport(data: {
   targetType: "JOB" | "WORKER" | "EMPLOYER";
   targetId: string;
   reason: string;
-}) {
+}): Promise<{ error: string } | { success: true }> {
   const user = await requireAuth();
 
   const parsed = createReportSchema.safeParse(data);
-  if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+  if (!parsed.success) return { error: "Invalid report data" };
 
   await prisma.report.create({
     data: {

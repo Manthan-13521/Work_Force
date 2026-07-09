@@ -9,6 +9,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Building, MapPin, Clock, Briefcase, CheckCircle, IndianRupee, Calendar } from "lucide-react";
 import { ApplyButton } from "./apply-button";
+import { ReportButton } from "./report-button";
 
 export default async function JobDetailPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
@@ -122,15 +123,7 @@ export default async function JobDetailPage(props: { params: Promise<{ id: strin
                 </Link>
               )}
 
-              {user?.role === "WORKER" && job.status === "ACTIVE" && (
-                <form action="/api/report" method="post" className="mt-4">
-                  <input type="hidden" name="targetType" value="JOB" />
-                  <input type="hidden" name="targetId" value={job.id} />
-                  <Button variant="ghost" size="sm" className="w-full text-destructive" type="submit">
-                    Report this job
-                  </Button>
-                </form>
-              )}
+              {job.status === "ACTIVE" && <ReportButton targetType="JOB" targetId={job.id} />}
             </CardContent>
           </Card>
         </div>

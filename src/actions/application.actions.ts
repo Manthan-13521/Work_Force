@@ -73,7 +73,9 @@ export async function updateApplicationStatus(
     select: { companyName: true },
   });
   const companyName = employerProfile?.companyName || user.name || "Employer";
-  const whatsappUrl = `https://wa.me/91${user.phone}?text=Hi%20${companyName.replace(/\s+/g, "%20")}%2C%20I%20was%20shortlisted%20for%20${application.job.title.replace(/\s+/g, "%20")}%20on%20Workforce`;
+  const encodedCompany = encodeURIComponent(companyName);
+  const encodedTitle = encodeURIComponent(application.job.title);
+  const whatsappUrl = `https://wa.me/91${user.phone}?text=Hi%20${encodedCompany}%2C%20I%20was%20shortlisted%20for%20${encodedTitle}%20on%20Workforce`;
 
   if (status === "SHORTLISTED") {
     await prisma.notification.create({

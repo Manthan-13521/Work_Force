@@ -15,6 +15,7 @@ import {
   createCitySchema,
   idParamSchema,
 } from "@/lib/schemas";
+import { cached, cacheKey, invalidateCache } from "@/lib/cache";
 
 export async function getAdminStats() {
   await requireAuth(["ADMIN"]);
@@ -176,12 +177,21 @@ export async function updateReportStatus(reportId: string, status: "REVIEWED" | 
 
 export async function getCategories(pagination?: { cursor?: string; limit?: number }) {
   const limitVal = pagination?.limit ?? PAGE_SIZE;
-  const items = await prisma.category.findMany({
-    select: { id: true, name: true, slug: true },
-    orderBy: [{ name: "asc" }, { id: "asc" }],
-    take: limitVal + 1,
-    ...(pagination?.cursor ? { cursor: { id: pagination.cursor }, skip: 1 } : {}),
-  });
+  const items = await (
+    pagination?.cursor
+      ? prisma.category.findMany({
+          select: { id: true, name: true, slug: true },
+          orderBy: [{ name: "asc" }, { id: "asc" }],
+          take: limitVal + 1,
+          cursor: { id: pagination.cursor }, skip: 1,
+        })
+      : cached(cacheKey("categories"), () =>
+          prisma.category.findMany({
+            select: { id: true, name: true, slug: true },
+            orderBy: [{ name: "asc" }, { id: "asc" }],
+          }),
+        { ttl: 600 })
+  );
   return buildPaginatedResponse(items, limitVal);
 }
 
@@ -193,6 +203,7 @@ export async function createCategory(name: string) {
 
   const slug = parsed.data.name.toLowerCase().replace(/\s+/g, "-");
   await prisma.category.create({ data: { name: parsed.data.name, slug } });
+  await invalidateCache("cache:categories");
   revalidateTag("admin-categories", "max");
 }
 
@@ -203,11 +214,15 @@ export async function deleteCategory(id: string) {
   if (!parsed.success) return;
 
   await prisma.category.delete({ where: { id: parsed.data.id } });
+  await invalidateCache("cache:categories");
   revalidateTag("admin-categories", "max");
 }
 
 export async function getCities() {
-  return prisma.city.findMany({ select: { id: true, name: true, slug: true }, orderBy: { name: "asc" } });
+  await requireAuth(["ADMIN"]);
+  return cached(cacheKey("cities"), () =>
+    prisma.city.findMany({ select: { id: true, name: true, slug: true }, orderBy: { name: "asc" } }),
+  { ttl: 600 });
 }
 
 export async function createCity(name: string) {
@@ -218,6 +233,7 @@ export async function createCity(name: string) {
 
   const slug = parsed.data.name.toLowerCase().replace(/\s+/g, "-");
   await prisma.city.create({ data: { name: parsed.data.name, slug } });
+  await invalidateCache("cache:cities");
   revalidateTag("admin-cities", "max");
 }
 
@@ -228,5 +244,6 @@ export async function deleteCity(id: string) {
   if (!parsed.success) return;
 
   await prisma.city.delete({ where: { id: parsed.data.id } });
+  await invalidateCache("cache:cities");
   revalidateTag("admin-cities", "max");
 }

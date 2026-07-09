@@ -4,13 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Briefcase } from "lucide-react";
+import { Menu, X, Briefcase, Bell } from "lucide-react";
 import { useState } from "react";
 
 interface NavbarProps {
   user?: {
     role: string;
     name?: string | null;
+    unreadNotifications?: number;
   } | null;
 }
 
@@ -94,6 +95,14 @@ export function Navbar({ user }: NavbarProps) {
             </>
           ) : (
             <div className="flex items-center gap-3">
+                  {(user.unreadNotifications ?? 0) > 0 && (
+                <Link href={user.role === "WORKER" ? "/worker/applications" : "/employer/dashboard"} className="relative">
+                  <Bell className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors" />
+                  <span className="absolute -top-1.5 -right-1.5 inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-destructive rounded-full">
+                    {Math.min(user.unreadNotifications ?? 0, 9)}
+                  </span>
+                </Link>
+              )}
               <span className="text-sm text-muted-foreground">
                 {user.name || user.role}
               </span>
@@ -108,6 +117,7 @@ export function Navbar({ user }: NavbarProps) {
           className="md:hidden p-2"
           onClick={() => setMobileOpen(!mobileOpen)}
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          aria-expanded={mobileOpen}
         >
           {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>

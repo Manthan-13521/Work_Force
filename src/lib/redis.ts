@@ -1,5 +1,6 @@
 import { Redis } from "@upstash/redis";
 import { env } from "@/env";
+import { logger } from "./logger";
 
 function createRedisClient() {
   if (env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN) {
@@ -7,6 +8,11 @@ function createRedisClient() {
       url: env.UPSTASH_REDIS_REST_URL,
       token: env.UPSTASH_REDIS_REST_TOKEN,
     });
+  }
+  if (env.NODE_ENV === "production") {
+    logger.warn(
+      "UPSTASH_REDIS not configured — rate limiting and OTP storage will use per-instance in-memory fallback"
+    );
   }
   return null;
 }
@@ -92,6 +98,14 @@ export async function checkRateLimit(
   if (count >= maxAttempts) return false;
   memoryStore.set(key, { value: String(count + 1), expiresAt: record.expiresAt });
   return true;
+}
+
+export function getClientIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return realIp;
+  return "unknown";
 }
 
 // Periodic cleanup of expired in-memory entries (only when Redis is not configured)

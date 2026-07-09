@@ -1,8 +1,13 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
+  },
+  poweredByHeader: false,
+  images: {
+    formats: ["image/avif", "image/webp"],
   },
   async headers() {
     return [
@@ -18,4 +23,6 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  silent: !process.env.SENTRY_DSN,
+});

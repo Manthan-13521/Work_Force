@@ -7,53 +7,76 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { env } from "@/env";
 import { v2 as cloudinary } from "cloudinary";
+import crypto from "crypto";
+import { CircuitBreaker } from "@/lib/circuit-breaker";
+import { withTimeout } from "@/lib/timeout";
+import { logger } from "@/lib/logger";
 
-const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_IMAGE_TYPES = new Map([
+  ["image/jpeg", "jpg"],
+  ["image/png", "png"],
+  ["image/webp", "webp"],
+]);
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const CLOUDINARY_TIMEOUT = 15000;
 
-function isAllowedMimeType(mime: string): boolean {
-  return ALLOWED_IMAGE_MIME_TYPES.has(mime);
-}
-
-cloudinary.config({
-  cloud_name: env.CLOUDINARY_CLOUD_NAME,
-  api_key: env.CLOUDINARY_API_KEY,
-  api_secret: env.CLOUDINARY_API_SECRET,
+const cloudinaryBreaker = new CircuitBreaker("cloudinary-upload", {
+  failureThreshold: 3,
+  resetTimeoutMs: 30000,
 });
 
+function cloudinaryConfigured() {
+  if (env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET) {
+    cloudinary.config({
+      cloud_name: env.CLOUDINARY_CLOUD_NAME,
+      api_key: env.CLOUDINARY_API_KEY,
+      api_secret: env.CLOUDINARY_API_SECRET,
+    });
+    return true;
+  }
+  return false;
+}
+
 async function saveFile(file: File, prefix: string): Promise<string> {
-  if (!isAllowedMimeType(file.type)) {
+  const ext = ALLOWED_IMAGE_TYPES.get(file.type);
+  if (!ext) {
     throw new Error("Only JPEG, PNG, and WebP images are allowed.");
   }
   if (file.size > MAX_FILE_SIZE) {
     throw new Error("File must be under 5MB.");
   }
 
-  const ext = file.name.split(".").pop() || "jpg";
-  const filename = `${prefix}-${Date.now()}.${ext}`;
+  const uniqueId = crypto.randomUUID();
+  const filename = `${prefix}-${uniqueId}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  // Try Cloudinary first, fall back to local filesystem
-  if (env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET) {
+  if (cloudinaryConfigured()) {
     try {
-      const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          {
-            folder: "workforce",
-            public_id: filename.replace(`.${ext}`, ""),
-            resource_type: "image",
-            allowed_formats: ["jpg", "jpeg", "png", "webp"],
-          },
-          (err, result) => {
-            if (err || !result) reject(err || new Error("Upload failed"));
-            else resolve(result);
-          }
+      const url = await cloudinaryBreaker.call(async () => {
+        const result = await withTimeout(
+          new Promise<{ secure_url: string }>((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              {
+                folder: "workforce",
+                public_id: filename.replace(`.${ext}`, ""),
+                resource_type: "image",
+                allowed_formats: ["jpg", "jpeg", "png", "webp"],
+              },
+              (err, result) => {
+                if (err || !result) reject(err || new Error("Upload failed"));
+                else resolve(result);
+              }
+            );
+            stream.end(buffer);
+          }),
+          CLOUDINARY_TIMEOUT,
+          "Cloudinary upload"
         );
-        stream.end(buffer);
+        return result;
       });
-      return result.secure_url;
-    } catch {
-      // Fall through to local upload
+      return url.secure_url;
+    } catch (error) {
+      logger.warn("Cloudinary upload failed, falling back to local", { error: String(error) });
     }
   }
 

@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-export const phoneSchema = z.string().regex(/^\d{10}$/, "Phone must be 10 digits");
+export const phoneSchema = z.string().regex(/^[6-9]\d{9}$/, "Phone must be 10 digits starting with 6-9");
 
-export const otpSchema = z.string().length(6, "OTP must be 6 digits");
+export const otpSchema = z.string().regex(/^\d{6}$/, "OTP must be 6 digits");
 
 export const tradeSchema = z.string().min(1, "Trade is required");
 

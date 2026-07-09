@@ -119,6 +119,8 @@ model WorkerProfile {
   @@index([isVerified])
   @@index([trade, isVerified])
   @@index([experienceYears])
+  @@index([isVerified, experienceYears])
+  @@index([expectedSalary])
 }
 
 model EmployerProfile {
@@ -205,6 +207,7 @@ model Application {
   @@unique([jobId, workerId])
   @@index([jobId])
   @@index([workerId])
+  @@index([workerId, appliedAt])
   @@index([status])
   @@index([appliedAt])
   @@index([jobId, status])
@@ -272,6 +275,7 @@ model Report {
   @@index([targetId])
   @@index([status])
   @@index([createdAt])
+  @@index([status, createdAt])
 }
 
 model Notification {
@@ -286,7 +290,7 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([userId, read])
+  @@index([userId, read, createdAt])
   @@index([userId, createdAt])
 }
 

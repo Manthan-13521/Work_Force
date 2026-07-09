@@ -16,21 +16,21 @@ export function Footer() {
             </p>
           </div>
           <div>
-            <h4 className="font-semibold mb-3 text-sm">For Workers</h4>
+            <h3 className="font-semibold mb-3 text-sm">For Workers</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/jobs" className="hover:text-primary transition-colors">Browse Jobs</Link></li>
               <li><Link href="/register" className="hover:text-primary transition-colors">Create Profile</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold mb-3 text-sm">For Employers</h4>
+            <h3 className="font-semibold mb-3 text-sm">For Employers</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link></li>
               <li><Link href="/register" className="hover:text-primary transition-colors">Post a Job</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="font-semibold mb-3 text-sm">Company</h4>
+            <h3 className="font-semibold mb-3 text-sm">Company</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><Link href="/about" className="hover:text-primary transition-colors">About</Link></li>
               <li><Link href="/contact" className="hover:text-primary transition-colors">Contact</Link></li>

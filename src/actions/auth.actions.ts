@@ -10,8 +10,8 @@ export async function requestOTP(phone: string) {
   const parsed = requestOtpSchema.safeParse({ phone });
   if (!parsed.success) return { error: "Invalid phone number" };
 
-  const allowed = await checkOTPRateLimit(parsed.data.phone);
-  if (!allowed) return { error: "Too many requests. Please try again later." };
+  const phoneAllowed = await checkOTPRateLimit(parsed.data.phone);
+  if (!phoneAllowed) return { error: "Too many requests. Please try again later." };
 
   const otp = generateOTP();
   await storeOTP(parsed.data.phone, otp);
@@ -135,21 +135,24 @@ export async function completeEmployerProfile(data: {
     },
   });
 
-  // Auto-assign free starter plan
   const starterPlan = await prisma.plan.findFirst({
     where: { name: "Starter" },
     select: { jobPostLimit: true, durationDays: true },
   });
   if (starterPlan) {
-    await prisma.jobCredit.upsert({
+    const existing = await prisma.jobCredit.findUnique({
       where: { employerId: data.userId },
-      create: {
-        employerId: data.userId,
-        remaining: starterPlan.jobPostLimit,
-        expiryDate: new Date(Date.now() + starterPlan.durationDays * 86400000),
-      },
-      update: {},
+      select: { id: true },
     });
+    if (!existing) {
+      await prisma.jobCredit.create({
+        data: {
+          employerId: data.userId,
+          remaining: starterPlan.jobPostLimit,
+          expiryDate: new Date(Date.now() + starterPlan.durationDays * 86400000),
+        },
+      });
+    }
   }
 
   redirect("/employer/dashboard");

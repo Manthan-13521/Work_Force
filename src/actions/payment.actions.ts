@@ -7,6 +7,7 @@ import Razorpay from "razorpay";
 import crypto from "crypto";
 import { buildPaginatedResponse, PAGE_SIZE } from "@/lib/pagination";
 import { createRazorpayOrderSchema } from "@/lib/schemas";
+import { cached, cacheKey } from "@/lib/cache";
 
 export async function createRazorpayOrder(planId: string): Promise<
   | { error: string }
@@ -126,7 +127,9 @@ export async function verifyPayment(
 }
 
 export async function getPlans() {
-  return prisma.plan.findMany({ select: { id: true, name: true, price: true, durationDays: true, jobPostLimit: true, isFeatured: true }, orderBy: { price: "asc" } });
+  return cached(cacheKey("plans"), () =>
+    prisma.plan.findMany({ select: { id: true, name: true, price: true, durationDays: true, jobPostLimit: true, isFeatured: true }, orderBy: { price: "asc" } }),
+  { ttl: 600 });
 }
 
 export async function getEmployerPayments(pagination?: { cursor?: string; limit?: number }) {
