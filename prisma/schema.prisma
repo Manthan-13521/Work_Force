@@ -117,6 +117,8 @@ model WorkerProfile {
 
   @@index([trade])
   @@index([isVerified])
+  @@index([trade, isVerified])
+  @@index([experienceYears])
 }
 
 model EmployerProfile {
@@ -170,6 +172,11 @@ model Job {
   @@index([isFeatured])
   @@index([expiresAt])
   @@index([createdAt])
+  @@index([employerId, status])
+  @@index([employerId, createdAt])
+  @@index([status, category, city])
+  @@index([status, shiftType])
+  @@index([status, city, salaryMin])
 }
 
 model JobView {
@@ -195,10 +202,13 @@ model Application {
   job    Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
   worker User @relation(fields: [workerId], references: [id], onDelete: Cascade)
 
+  @@unique([jobId, workerId])
   @@index([jobId])
   @@index([workerId])
   @@index([status])
   @@index([appliedAt])
+  @@index([jobId, status])
+  @@index([jobId, appliedAt])
 }
 
 model Plan {
@@ -243,6 +253,8 @@ model Payment {
   @@index([razorpayOrderId])
   @@index([status])
   @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([razorpayOrderId, status])
 }
 
 model Report {
@@ -274,6 +286,8 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, read])
+  @@index([userId, createdAt])
 }
 
 model Category {
@@ -281,6 +295,18 @@ model Category {
   name      String   @unique
   slug      String   @unique
   createdAt DateTime @default(now())
+
+  @@index([name])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model City {
@@ -288,4 +314,6 @@ model City {
   name      String   @unique
   slug      String   @unique
   createdAt DateTime @default(now())
+
+  @@index([name])
 }

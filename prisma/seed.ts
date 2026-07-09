@@ -1,6 +1,6 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import * as bcrypt from "bcryptjs";
+
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL || "postgresql://manthanjaiswal@localhost:5432/workforce" });
 const prisma = new PrismaClient({ adapter });
@@ -198,8 +198,8 @@ async function main() {
         salaryMin: j.salaryMin,
         salaryMax: j.salaryMax,
         vacancies: j.vacancies,
-        shiftType: j.shift as any,
-        jobType: j.type as any,
+        shiftType: j.shift as "DAY" | "NIGHT" | "ROTATIONAL" | "GENERAL",
+        jobType: j.type as "FULL_TIME" | "PART_TIME" | "CONTRACT",
         status: "ACTIVE",
         expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       },

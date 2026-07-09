@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { updateTag } from "next/cache";
 import { buildPaginatedResponse, PAGE_SIZE } from "@/lib/pagination";
 import { applyToJobSchema, updateApplicationStatusSchema } from "@/lib/schemas";
+import { Prisma } from "@/generated/prisma/client";
 
 export async function applyToJob(jobId: string) {
   const user = await requireAuth(["WORKER"]);
@@ -12,21 +13,22 @@ export async function applyToJob(jobId: string) {
   const parsed = applyToJobSchema.safeParse({ jobId });
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
 
-  const existing = await prisma.application.findFirst({
-    where: { jobId, workerId: user.id },
-    select: { id: true },
-  });
-  if (existing) return { error: "Already applied" };
-
   const job = await prisma.job.findUnique({
     where: { id: jobId },
     select: { status: true, employerId: true, title: true },
   });
   if (!job || job.status !== "ACTIVE") return { error: "Job is not available" };
 
-  await prisma.application.create({
-    data: { jobId, workerId: user.id },
-  });
+  try {
+    await prisma.application.create({
+      data: { jobId, workerId: user.id },
+    });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return { error: "Already applied" };
+    }
+    throw e;
+  }
 
   await prisma.notification.create({
     data: {
@@ -145,7 +147,10 @@ export async function getWorkerApplications(pagination?: { cursor?: string; limi
 
 export async function getJobApplications(jobId: string, pagination?: { cursor?: string; limit?: number }) {
   const user = await requireAuth(["EMPLOYER"]);
-  const job = await prisma.job.findUnique({ where: { id: jobId } });
+  const job = await prisma.job.findUnique({
+    where: { id: jobId },
+    select: { employerId: true },
+  });
   if (!job || job.employerId !== user.id) throw new Error("Unauthorized");
 
   const limitVal = pagination?.limit ?? PAGE_SIZE;

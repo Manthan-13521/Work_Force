@@ -95,13 +95,10 @@ export async function verifyPayment(
 
     if (!payment || !payment.plan) return { error: "Payment not found" };
 
-    if (payment.status === "SUCCESS") {
-      return { success: true };
-    }
-
-    await prisma.$transaction([
-      prisma.payment.update({
-        where: { id: payment.id },
+    // Use updateMany with status filter inside transaction to prevent race
+    const [updated] = await prisma.$transaction([
+      prisma.payment.updateMany({
+        where: { id: payment.id, status: "PENDING" },
         data: { status: "SUCCESS", razorpayPaymentId },
       }),
       prisma.jobCredit.upsert({
@@ -117,6 +114,10 @@ export async function verifyPayment(
         },
       }),
     ]);
+
+    if (updated.count === 0) {
+      return { success: true };
+    }
 
     return { success: true };
   } catch {

@@ -36,14 +36,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Payment not found" }, { status: 404 });
       }
 
-      // Idempotency: skip if already processed
-      if (dbPayment.status === "SUCCESS") {
-        return NextResponse.json({ received: true });
-      }
-
-      await prisma.$transaction([
-        prisma.payment.update({
-          where: { id: dbPayment.id },
+      // Idempotency: use updateMany with status filter to prevent race
+      const [updated] = await prisma.$transaction([
+        prisma.payment.updateMany({
+          where: { id: dbPayment.id, status: "PENDING" },
           data: { status: "SUCCESS", razorpayPaymentId: paymentId },
         }),
         prisma.jobCredit.upsert({
@@ -59,6 +55,11 @@ export async function POST(request: NextRequest) {
           },
         }),
       ]);
+
+      // If no rows were updated, another webhook already processed it
+      if (updated.count === 0) {
+        return NextResponse.json({ received: true });
+      }
     }
 
     if (event.event === "payment.failed") {

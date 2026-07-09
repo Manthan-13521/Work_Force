@@ -18,15 +18,23 @@ const memoryStore = new Map<string, { value: string; expiresAt: number }>();
 
 export async function redisSet(key: string, value: string, ttlSeconds: number): Promise<void> {
   if (redis) {
-    await redis.set(key, value, { ex: ttlSeconds });
-  } else {
-    memoryStore.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
+    try {
+      await redis.set(key, value, { ex: ttlSeconds });
+      return;
+    } catch {
+      // Redis unavailable — fall through to memory store
+    }
   }
+  memoryStore.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
 }
 
 export async function redisGet(key: string): Promise<string | null> {
   if (redis) {
-    return redis.get<string>(key);
+    try {
+      return await redis.get<string>(key);
+    } catch {
+      // Redis unavailable — fall through to memory store
+    }
   }
   const record = memoryStore.get(key);
   if (!record) return null;
@@ -39,10 +47,14 @@ export async function redisGet(key: string): Promise<string | null> {
 
 export async function redisDel(key: string): Promise<void> {
   if (redis) {
-    await redis.del(key);
-  } else {
-    memoryStore.delete(key);
+    try {
+      await redis.del(key);
+      return;
+    } catch {
+      // Redis unavailable — fall through to memory store
+    }
   }
+  memoryStore.delete(key);
 }
 
 // Rate limiting: returns true if allowed, false if rate-limited
@@ -52,14 +64,18 @@ export async function checkRateLimit(
   windowSeconds: number
 ): Promise<boolean> {
   if (redis) {
-    const current = await redis.get<number>(key);
-    if (current === null) {
-      await redis.set(key, 1, { ex: windowSeconds });
+    try {
+      const current = await redis.get<number>(key);
+      if (current === null) {
+        await redis.set(key, 1, { ex: windowSeconds });
+        return true;
+      }
+      if (current >= maxAttempts) return false;
+      await redis.incr(key);
       return true;
+    } catch {
+      // Redis unavailable — fall through to memory store
     }
-    if (current >= maxAttempts) return false;
-    await redis.incr(key);
-    return true;
   }
 
   // In-memory fallback

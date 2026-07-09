@@ -31,26 +31,33 @@ export async function postJob(formData: FormData) {
   const parsed = postJobSchema.safeParse(raw);
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
 
-  if (user.role !== "ADMIN") {
-    const credit = await prisma.jobCredit.findUnique({
-      where: { employerId: user.id },
-      select: { remaining: true, expiryDate: true },
-    });
+  try {
+    await prisma.$transaction(async (tx) => {
+      if (user.role !== "ADMIN") {
+        const credit = await tx.jobCredit.findUnique({
+          where: { employerId: user.id },
+          select: { remaining: true, expiryDate: true },
+        });
 
-    if (!credit || credit.remaining < 1) {
-      return { error: "No job credits remaining. Please purchase a plan." };
-    }
+        if (!credit || credit.remaining < 1) {
+          throw new Error("No job credits remaining. Please purchase a plan.");
+        }
 
-    if (credit.expiryDate && credit.expiryDate < new Date()) {
-      return { error: "Your job credits have expired. Please purchase a new plan." };
-    }
+        if (credit.expiryDate && credit.expiryDate < new Date()) {
+          throw new Error("Your job credits have expired. Please purchase a new plan.");
+        }
 
-    await prisma.$transaction([
-      prisma.jobCredit.update({
-        where: { employerId: user.id },
-        data: { remaining: { decrement: 1 } },
-      }),
-      prisma.job.create({
+        // Atomic decrement — if two requests race, only one succeeds
+        const result = await tx.jobCredit.updateMany({
+          where: { employerId: user.id, remaining: { gte: 1 } },
+          data: { remaining: { decrement: 1 } },
+        });
+        if (result.count === 0) {
+          throw new Error("No job credits remaining. Please purchase a plan.");
+        }
+      }
+
+      await tx.job.create({
         data: {
           employerId: user.id,
           title: parsed.data.title,
@@ -65,25 +72,10 @@ export async function postJob(formData: FormData) {
           jobType: parsed.data.jobType,
           expiresAt: parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : null,
         },
-      }),
-    ]);
-  } else {
-    await prisma.job.create({
-      data: {
-        employerId: user.id,
-        title: parsed.data.title,
-        description: parsed.data.description,
-        category: parsed.data.category,
-        location: parsed.data.location,
-        city: parsed.data.city,
-        salaryMin: parsed.data.salaryMin,
-        salaryMax: parsed.data.salaryMax,
-        vacancies: parsed.data.vacancies,
-        shiftType: parsed.data.shiftType,
-        jobType: parsed.data.jobType,
-        expiresAt: parsed.data.expiresAt ? new Date(parsed.data.expiresAt) : null,
-      },
+      });
     });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to post job" };
   }
 
   revalidateTag("jobs", "max");
@@ -96,10 +88,10 @@ export async function updateJobStatus(jobId: string, status: JobStatus) {
   const parsed = updateJobStatusSchema.safeParse({ jobId, status: status as string });
   if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
 
-  await prisma.job.update({
-    where: { id: parsed.data.jobId, employerId: user.id },
-    data: { status: parsed.data.status as JobStatus },
-  });
+  const where = user.role === "ADMIN"
+    ? { id: parsed.data.jobId }
+    : { id: parsed.data.jobId, employerId: user.id };
+  await prisma.job.update({ where, data: { status: parsed.data.status as JobStatus } });
   revalidateTag("jobs", "max");
 }
 

@@ -115,7 +115,7 @@ export async function completeEmployerProfile(data: {
 
   await prisma.user.update({
     where: { id: data.userId },
-    data: { name: parsed.data.name, role: "EMPLOYER" },
+    data: { name: parsed.data.name, role: "EMPLOYER", city: parsed.data.city },
   });
 
   await prisma.employerProfile.upsert({
@@ -136,7 +136,10 @@ export async function completeEmployerProfile(data: {
   });
 
   // Auto-assign free starter plan
-  const starterPlan = await prisma.plan.findFirst({ where: { name: "Starter" } });
+  const starterPlan = await prisma.plan.findFirst({
+    where: { name: "Starter" },
+    select: { jobPostLimit: true, durationDays: true },
+  });
   if (starterPlan) {
     await prisma.jobCredit.upsert({
       where: { employerId: data.userId },

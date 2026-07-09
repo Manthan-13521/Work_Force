@@ -5,12 +5,24 @@ import { requireAuth } from "@/lib/auth";
 import { revalidateTag } from "next/cache";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { env } from "@/env";
+import { v2 as cloudinary } from "cloudinary";
 
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+function isAllowedMimeType(mime: string): boolean {
+  return ALLOWED_IMAGE_MIME_TYPES.has(mime);
+}
+
+cloudinary.config({
+  cloud_name: env.CLOUDINARY_CLOUD_NAME,
+  api_key: env.CLOUDINARY_API_KEY,
+  api_secret: env.CLOUDINARY_API_SECRET,
+});
+
 async function saveFile(file: File, prefix: string): Promise<string> {
-  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+  if (!isAllowedMimeType(file.type)) {
     throw new Error("Only JPEG, PNG, and WebP images are allowed.");
   }
   if (file.size > MAX_FILE_SIZE) {
@@ -19,10 +31,34 @@ async function saveFile(file: File, prefix: string): Promise<string> {
 
   const ext = file.name.split(".").pop() || "jpg";
   const filename = `${prefix}-${Date.now()}.${ext}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-
-  await mkdir(uploadDir, { recursive: true });
   const buffer = Buffer.from(await file.arrayBuffer());
+
+  // Try Cloudinary first, fall back to local filesystem
+  if (env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET) {
+    try {
+      const result = await new Promise<{ secure_url: string }>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: "workforce",
+            public_id: filename.replace(`.${ext}`, ""),
+            resource_type: "image",
+            allowed_formats: ["jpg", "jpeg", "png", "webp"],
+          },
+          (err, result) => {
+            if (err || !result) reject(err || new Error("Upload failed"));
+            else resolve(result);
+          }
+        );
+        stream.end(buffer);
+      });
+      return result.secure_url;
+    } catch {
+      // Fall through to local upload
+    }
+  }
+
+  const uploadDir = path.join(process.cwd(), "public", "uploads");
+  await mkdir(uploadDir, { recursive: true });
   await writeFile(path.join(uploadDir, filename), buffer);
 
   return `/uploads/${filename}`;

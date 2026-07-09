@@ -63,6 +63,7 @@ export const ModelName = {
   Report: 'Report',
   Notification: 'Notification',
   Category: 'Category',
+  ContactMessage: 'ContactMessage',
   City: 'City'
 } as const
 
@@ -250,6 +251,17 @@ export const CategoryScalarFieldEnum = {
 } as const
 
 export type CategoryScalarFieldEnum = (typeof CategoryScalarFieldEnum)[keyof typeof CategoryScalarFieldEnum]
+
+
+export const ContactMessageScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  email: 'email',
+  message: 'message',
+  createdAt: 'createdAt'
+} as const
+
+export type ContactMessageScalarFieldEnum = (typeof ContactMessageScalarFieldEnum)[keyof typeof ContactMessageScalarFieldEnum]
 
 
 export const CityScalarFieldEnum = {

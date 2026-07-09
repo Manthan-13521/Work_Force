@@ -32,26 +32,6 @@ export async function updateWorkerProfile(data: {
   return { success: true };
 }
 
-export async function updatePhotoUrl(url: string) {
-  const user = await requireAuth(["WORKER"]);
-  await prisma.workerProfile.upsert({
-    where: { userId: user.id },
-    create: { userId: user.id, photoUrl: url },
-    update: { photoUrl: url },
-  });
-  revalidateTag("worker-profile", "max");
-}
-
-export async function updateIdDocUrl(url: string) {
-  const user = await requireAuth(["WORKER"]);
-  await prisma.workerProfile.upsert({
-    where: { userId: user.id },
-    create: { userId: user.id, idDocUrl: url },
-    update: { idDocUrl: url },
-  });
-  revalidateTag("worker-profile", "max");
-}
-
 export async function getWorkers(searchParams: URLSearchParams) {
   const { cursor, limit } = getPaginationParams(searchParams);
 

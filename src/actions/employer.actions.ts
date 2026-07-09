@@ -29,11 +29,8 @@ export async function updateEmployerProfile(data: {
 export async function getEmployerDashboard() {
   const user = await requireAuth(["EMPLOYER"]);
 
-  const [activeJobs, totalApplicants, recentApplications, credits] = await Promise.all([
+  const [activeJobs, recentApplications, credits] = await Promise.all([
     prisma.job.count({ where: { employerId: user.id, status: "ACTIVE" } }),
-    prisma.application.count({
-      where: { job: { employerId: user.id } },
-    }),
     prisma.application.findMany({
       where: { job: { employerId: user.id } },
       select: {
@@ -52,5 +49,5 @@ export async function getEmployerDashboard() {
     }),
   ]);
 
-  return { activeJobs, totalApplicants, recentApplications, credits };
+  return { activeJobs, recentApplications, credits };
 }

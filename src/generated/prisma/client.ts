@@ -102,6 +102,11 @@ export type Notification = Prisma.NotificationModel
  */
 export type Category = Prisma.CategoryModel
 /**
+ * Model ContactMessage
+ * 
+ */
+export type ContactMessage = Prisma.ContactMessageModel
+/**
  * Model City
  * 
  */
