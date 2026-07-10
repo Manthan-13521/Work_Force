@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateEmployerProfile } from "@/actions/employer.actions";
 import { INDUSTRIES } from "@/lib/constants";
 
@@ -39,16 +40,12 @@ export function CompanyProfileForm({ initialData }: CompanyProfileFormProps) {
         <label className="text-sm font-medium mb-1 block">Company Name</label>
         <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} required />
       </div>
-      <div>
-        <label className="text-sm font-medium mb-1 block">Industry</label>
-        <select
-          value={industry}
-          onChange={(e) => setIndustry(e.target.value)}
-          className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-        >
-          <option value="">Select industry</option>
-          {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
-        </select>
+      <div className="space-y-1.5">
+        <label className="text-sm font-medium text-foreground/90 block">Industry</label>
+        <Select value={industry} onValueChange={setIndustry}>
+          <SelectTrigger><SelectValue placeholder="Select industry" /></SelectTrigger>
+          <SelectContent>{INDUSTRIES.map((i) => <SelectItem key={i} value={i}>{i}</SelectItem>)}</SelectContent>
+        </Select>
       </div>
       <div>
         <label className="text-sm font-medium mb-1 block">GST Number (optional)</label>

@@ -16,7 +16,7 @@ export default async function PublicLayout({ children }: { children: React.React
   return (
     <>
       <Navbar user={user ? { role: user.role, name: user.name, unreadNotifications } : null} />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 min-h-[calc(100vh-4rem)]">{children}</main>
       <Footer />
     </>
   );

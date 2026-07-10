@@ -1,3 +1,6 @@
+const MAX_CONTEXT_ENTRIES = 10_000;
+const MAX_METRIC_BUCKET_KEYS = 100;
+
 let requestIdCounter = 0;
 
 export function generateRequestId(): string {
@@ -10,6 +13,10 @@ export function generateRequestId(): string {
 const requestContextStore = new Map<string, Record<string, string>>();
 
 export function setRequestContext(requestId: string, ctx: Record<string, string>) {
+  if (requestContextStore.size >= MAX_CONTEXT_ENTRIES) {
+    const key = requestContextStore.keys().next().value;
+    if (key) requestContextStore.delete(key);
+  }
   requestContextStore.set(requestId, ctx);
 }
 
@@ -24,6 +31,7 @@ export function clearRequestContext(requestId: string) {
 const metricBuckets = new Map<string, number[]>();
 
 export function recordLatency(name: string, durationMs: number) {
+  if (metricBuckets.size >= MAX_METRIC_BUCKET_KEYS) return;
   const bucket = metricBuckets.get(name) || [];
   bucket.push(durationMs);
   if (bucket.length > 1000) bucket.shift();

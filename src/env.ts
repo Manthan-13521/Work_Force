@@ -26,9 +26,10 @@ const envSchema = z.object({
   // Payments
   RAZORPAY_KEY_ID: z.string().optional(),
   RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
   NEXT_PUBLIC_RAZORPAY_KEY_ID: z.string().optional(),
 
-  // App
+  // App (REQUIRED in production — CSRF, sitemap, redirects)
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
 
   // Redis / Upstash
@@ -37,6 +38,11 @@ const envSchema = z.object({
 
   // Monitoring
   SENTRY_DSN: z.string().url().optional(),
+
+  // Analytics
+  NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
+  NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
+  NEXT_PUBLIC_CLARITY_ID: z.string().optional(),
 
   // Logging
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
@@ -65,6 +71,18 @@ function validateEnv(): Env {
     console.warn("⚠ Running with missing or invalid env vars");
     cached = process.env as unknown as Env;
     return cached;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    if (!result.data.NEXT_PUBLIC_APP_URL) {
+      console.warn("⚠ NEXT_PUBLIC_APP_URL is not set! CSRF origin validation will be restricted.");
+    }
+    if (!result.data.RAZORPAY_WEBHOOK_SECRET && !result.data.RAZORPAY_KEY_SECRET) {
+      console.warn("⚠ No Razorpay webhook secret configured! Webhook verification will fail.");
+    }
+    if (!result.data.SENTRY_DSN) {
+      console.warn("⚠ SENTRY_DSN is not set! Production errors will not be tracked.");
+    }
   }
 
   cached = result.data;

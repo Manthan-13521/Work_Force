@@ -1,0 +1,77 @@
+{
+  "$schema": "https://gist.githubusercontent.com/addyosmani/5e3356e15cea99c89cd02b0f5e5d4591/raw/performance-budget.schema.json",
+  "budgets": [
+    {
+      "path": "/",
+      "resourceSizes": [
+        { "resourceType": "total", "budget": 500000 },
+        { "resourceType": "script", "budget": 300000 },
+        { "resourceType": "stylesheet", "budget": 50000 },
+        { "resourceType": "image", "budget": 200000 },
+        { "resourceType": "font", "budget": 100000 },
+        { "resourceType": "document", "budget": 50000 },
+        { "resourceType": "third-party", "budget": 150000 }
+      ],
+      "timings": [
+        { "metric": "first-contentful-paint", "budget": 2000 },
+        { "metric": "largest-contentful-paint", "budget": 3000 },
+        { "metric": "cumulative-layout-shift", "budget": 0.1 },
+        { "metric": "interaction-to-next-paint", "budget": 200 },
+        { "metric": "time-to-first-byte", "budget": 800 },
+        { "metric": "total-blocking-time", "budget": 300 }
+      ]
+    },
+    {
+      "path": "/jobs",
+      "resourceSizes": [
+        { "resourceType": "total", "budget": 600000 },
+        { "resourceType": "script", "budget": 350000 },
+        { "resourceType": "stylesheet", "budget": 60000 },
+        { "resourceType": "image", "budget": 200000 },
+        { "resourceType": "font", "budget": 100000 },
+        { "resourceType": "document", "budget": 60000 },
+        { "resourceType": "third-party", "budget": 150000 }
+      ],
+      "timings": [
+        { "metric": "first-contentful-paint", "budget": 2500 },
+        { "metric": "largest-contentful-paint", "budget": 3500 },
+        { "metric": "cumulative-layout-shift", "budget": 0.1 },
+        { "metric": "interaction-to-next-paint", "budget": 200 },
+        { "metric": "time-to-first-byte", "budget": 1000 },
+        { "metric": "total-blocking-time", "budget": 400 }
+      ]
+    },
+    {
+      "path": "/workers",
+      "resourceSizes": [
+        { "resourceType": "total", "budget": 600000 },
+        { "resourceType": "script", "budget": 350000 },
+        { "resourceType": "stylesheet", "budget": 60000 },
+        { "resourceType": "image", "budget": 200000 },
+        { "resourceType": "font", "budget": 100000 },
+        { "resourceType": "document", "budget": 60000 },
+        { "resourceType": "third-party", "budget": 150000 }
+      ],
+      "timings": [
+        { "metric": "largest-contentful-paint", "budget": 3500 },
+        { "metric": "cumulative-layout-shift", "budget": 0.1 }
+      ]
+    },
+    {
+      "path": "/pricing",
+      "resourceSizes": [
+        { "resourceType": "total", "budget": 500000 },
+        { "resourceType": "script", "budget": 300000 },
+        { "resourceType": "stylesheet", "budget": 50000 },
+        { "resourceType": "image", "budget": 200000 },
+        { "resourceType": "font", "budget": 100000 },
+        { "resourceType": "document", "budget": 50000 },
+        { "resourceType": "third-party", "budget": 150000 }
+      ],
+      "timings": [
+        { "metric": "largest-contentful-paint", "budget": 3000 },
+        { "metric": "cumulative-layout-shift", "budget": 0.1 }
+      ]
+    }
+  ]
+}

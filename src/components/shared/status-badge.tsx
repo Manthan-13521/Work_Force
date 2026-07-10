@@ -1,10 +1,6 @@
-import { Badge } from "./badge";
+import { Badge } from "@/components/ui/badge";
 
-interface StatusBadgeProps {
-  status: string;
-}
-
-const statusMap: Record<string, { label: string; variant: "success" | "warning" | "danger" | "default" | "outline" }> = {
+const statusConfig: Record<string, { label: string; variant: "default" | "success" | "warning" | "danger" | "outline" | "info" | "secondary" | "verified" }> = {
   APPLIED: { label: "Applied", variant: "default" },
   SHORTLISTED: { label: "Shortlisted", variant: "warning" },
   REJECTED: { label: "Rejected", variant: "danger" },
@@ -18,9 +14,14 @@ const statusMap: Record<string, { label: string; variant: "success" | "warning" 
   DISMISSED: { label: "Dismissed", variant: "outline" },
   SUCCESS: { label: "Success", variant: "success" },
   FAILED: { label: "Failed", variant: "danger" },
+  VERIFIED: { label: "Verified", variant: "verified" },
 };
 
+interface StatusBadgeProps {
+  status: string;
+}
+
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const config = statusMap[status] || { label: status, variant: "default" as const };
+  const config = statusConfig[status] ?? { label: status, variant: "outline" as const };
   return <Badge variant={config.variant}>{config.label}</Badge>;
 }

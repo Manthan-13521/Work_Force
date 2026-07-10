@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/shared/badge";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { EmptyState } from "@/components/shared/empty-state";
 import { getCurrentUser } from "@/lib/auth";
 import { getAdminUsers } from "@/actions/admin.actions";
@@ -9,7 +8,7 @@ import { formatDate } from "@/lib/utils";
 import { getPaginationParams } from "@/lib/pagination";
 import { Pagination } from "@/components/shared/pagination";
 import { UserActions } from "./user-actions";
-import { Search } from "lucide-react";
+import { Search, Users } from "lucide-react";
 
 export default async function AdminUsersPage(props: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const searchParams = await props.searchParams;
@@ -26,81 +25,66 @@ export default async function AdminUsersPage(props: { searchParams: Promise<Reco
   const { data: users, nextCursor, hasMore } = await getAdminUsers(search, { cursor, limit });
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Users</h1>
-        <form method="GET" className="flex gap-2">
+    <div className="p-5 lg:p-6 max-w-7xl mx-auto space-y-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Users</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage all platform users</p>
+        </div>
+        <form method="GET" className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             name="q"
-            type="text"
-            placeholder="Search by name or phone..."
-            defaultValue={search || ""}
-            className="h-10 rounded-md border border-input bg-background px-3 text-sm w-64"
+            defaultValue={search}
+            placeholder="Search users..."
+            className="w-full h-10 pl-9 pr-3 rounded-lg border border-input bg-background text-sm ring-offset-background transition-all duration-200 hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           />
-          <Button type="submit" variant="outline" size="sm" aria-label="Search users">
-            <Search className="h-4 w-4" />
-          </Button>
         </form>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          {users.length === 0 ? (
-            <div className="p-6">
-              <EmptyState title="No users found" />
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3 font-medium">Name</th>
-                    <th className="text-left p-3 font-medium">Phone</th>
-                    <th className="text-left p-3 font-medium">Role</th>
-                    <th className="text-left p-3 font-medium">Status</th>
-                    <th className="text-left p-3 font-medium">Joined</th>
-                    <th className="text-right p-3 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u) => (
-                    <tr key={u.id} className="border-b hover:bg-muted/30">
-                      <td className="p-3 font-medium">{u.name || "—"}</td>
-                      <td className="p-3">{u.phone}</td>
-                      <td className="p-3">
-                        <Badge variant={u.role === "ADMIN" ? "default" : u.role === "EMPLOYER" ? "verified" : "outline"}>
-                          {u.role}
-                        </Badge>
-                      </td>
-                      <td className="p-3">
-                        <Badge variant={u.status === "ACTIVE" ? "success" : "danger"}>
-                          {u.status}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-muted-foreground">{formatDate(new Date(u.createdAt))}</td>
-                      <td className="p-3 text-right">
-                        <UserActions
-                          userId={u.id}
-                          role={u.role}
-                          status={u.status}
-                          isVerified={
-                            u.role === "EMPLOYER"
-                              ? u.employerProfile?.isVerified || false
-                              : u.role === "WORKER"
-                              ? u.workerProfile?.isVerified || false
-                              : false
-                          }
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      <Pagination hasMore={hasMore} nextCursor={nextCursor} />
+      {users.length === 0 ? (
+        <EmptyState icon={<Users className="h-12 w-12" />} title="No users found" description={search ? "Try a different search term" : "No users have joined yet"} />
+      ) : (
+        <div className="rounded-xl border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
+                        {(u.name || u.phone)[0]}
+                      </div>
+                      <div>
+                        <p className="font-medium">{u.name || "Unnamed"}</p>
+                        <p className="text-xs text-muted-foreground">{u.phone}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{u.phone}</TableCell>
+                  <TableCell><Badge variant={u.role === "ADMIN" ? "default" : u.role === "EMPLOYER" ? "info" : "secondary"} size="sm">{u.role}</Badge></TableCell>
+                  <TableCell><Badge variant={u.status === "ACTIVE" ? "success" : u.status === "SUSPENDED" ? "danger" : "warning"} size="sm">{u.status}</Badge></TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{formatDate(new Date(u.createdAt))}</TableCell>
+                  <TableCell className="text-right"><UserActions userId={u.id} status={u.status} role={u.role} isVerified={u.workerProfile?.isVerified ?? u.employerProfile?.isVerified ?? false} /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <div className="p-4 border-t border-border/30">
+            <Pagination nextCursor={nextCursor ?? null} hasMore={hasMore} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

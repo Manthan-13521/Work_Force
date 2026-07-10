@@ -23,22 +23,25 @@ export default async function AdminCategoriesPage(props: { searchParams: Promise
   const { data: categories, nextCursor, hasMore } = await getCategories({ cursor, limit });
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Categories</h1>
+    <div className="p-5 lg:p-6 max-w-7xl mx-auto space-y-5">
+      <div>
+        <h1 className="text-xl font-bold tracking-tight">Categories</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Manage job categories</p>
+      </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        <Card>
+      <div className="grid md:grid-cols-2 gap-5">
+        <Card variant="ghost" className="border">
           <CardHeader>
-            <CardTitle>Add Category</CardTitle>
+            <CardTitle className="text-sm font-semibold">Add Category</CardTitle>
           </CardHeader>
           <CardContent>
             <CategoryForm />
           </CardContent>
         </Card>
 
-        <Card>
+        <Card variant="ghost" className="border">
           <CardHeader>
-            <CardTitle>Existing Categories</CardTitle>
+            <CardTitle className="text-sm font-semibold">Existing Categories</CardTitle>
           </CardHeader>
           <CardContent>
             {categories.length === 0 ? (
@@ -49,7 +52,7 @@ export default async function AdminCategoriesPage(props: { searchParams: Promise
                   <div key={cat.id} className="flex items-center justify-between p-3 rounded-lg border">
                     <span className="text-sm font-medium">{cat.name}</span>
                     <form action={deleteCategory.bind(null, cat.id)}>
-                      <Button type="submit" variant="ghost" size="sm" className="text-destructive">
+                      <Button type="submit" variant="ghost" size="icon-sm" className="text-destructive hover:text-destructive">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </form>

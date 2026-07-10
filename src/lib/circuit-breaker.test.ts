@@ -12,7 +12,7 @@ describe("CircuitBreaker", () => {
     const cb = new CircuitBreaker("test", { failureThreshold: 2, resetTimeoutMs: 1000 });
     await expect(cb.call(async () => { throw new Error("fail"); })).rejects.toThrow("fail");
     await expect(cb.call(async () => { throw new Error("fail"); })).rejects.toThrow("fail");
-    await expect(cb.call(async () => "ok")).rejects.toThrow("Circuit breaker is OPEN");
+    await expect(cb.call(async () => "ok")).rejects.toThrow("Circuit breaker test is OPEN");
   });
 
   it("uses fallback when open", async () => {
@@ -25,7 +25,7 @@ describe("CircuitBreaker", () => {
   it("resets after timeout", async () => {
     const cb = new CircuitBreaker("test", { failureThreshold: 1, resetTimeoutMs: 50 });
     await expect(cb.call(async () => { throw new Error("fail"); })).rejects.toThrow("fail");
-    await expect(cb.call(async () => "ok")).rejects.toThrow("Circuit breaker is OPEN");
+    await expect(cb.call(async () => "ok")).rejects.toThrow("Circuit breaker test is OPEN");
     await new Promise((r) => setTimeout(r, 60));
     const result = await cb.call(async () => "ok");
     expect(result).toBe("ok");

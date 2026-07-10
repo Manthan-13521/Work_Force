@@ -38,14 +38,20 @@ describe("retry", () => {
   });
 
   it("uses increasing delay between retries", async () => {
-    const fn = vi.fn()
-      .mockRejectedValueOnce(new Error("fail1"))
-      .mockRejectedValueOnce(new Error("fail2"))
-      .mockResolvedValueOnce("ok");
-    const start = Date.now();
-    await retry(fn, { maxAttempts: 3, delayMs: 50 });
-    const elapsed = Date.now() - start;
-    expect(elapsed).toBeGreaterThanOrEqual(100);
+    vi.useFakeTimers();
+    try {
+      const fn = vi.fn()
+        .mockRejectedValueOnce(new Error("fail1"))
+        .mockRejectedValueOnce(new Error("fail2"))
+        .mockResolvedValueOnce("ok");
+      const promise = retry(fn, { maxAttempts: 3, delayMs: 100 });
+      await vi.advanceTimersByTimeAsync(500);
+      const result = await promise;
+      expect(result).toBe("ok");
+      expect(fn).toHaveBeenCalledTimes(3);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("preserves the last error type on exhaustion", async () => {

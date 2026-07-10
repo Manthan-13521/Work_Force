@@ -1,38 +1,33 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { generateOTP } from "@/lib/utils";
 import { storeOTP, sendOTP, checkOTPRateLimit } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/redis";
+import { apiSuccess, apiError, apiServerError } from "@/lib/api-response";
 
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const ipAllowed = await checkRateLimit(`rate:otp:ip:${ip}`, 10, 60);
     if (!ipAllowed) {
-      return NextResponse.json(
-        { error: "Too many requests. Please try again later." },
-        { status: 429 }
-      );
+      return apiError("Too many requests. Please try again later.", 429, "RATE_LIMITED");
     }
 
     const { phone } = await request.json();
     if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
-      return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
+      return apiError("Invalid phone number", 400, "INVALID_PHONE");
     }
 
     const allowed = await checkOTPRateLimit(phone);
     if (!allowed) {
-      return NextResponse.json(
-        { error: "Too many requests. Please try again later." },
-        { status: 429 }
-      );
+      return apiError("Too many requests. Please try again later.", 429, "RATE_LIMITED");
     }
 
     const otp = generateOTP();
     await storeOTP(phone, otp);
     await sendOTP(phone, otp);
 
-    return NextResponse.json({ success: true });
+    return apiSuccess({ phone });
   } catch {
-    return NextResponse.json({ error: "Failed to send OTP" }, { status: 500 });
+    return apiServerError("Failed to send OTP");
   }
 }

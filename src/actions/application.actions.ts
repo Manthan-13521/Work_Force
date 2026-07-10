@@ -6,6 +6,7 @@ import { updateTag } from "next/cache";
 import { buildPaginatedResponse, PAGE_SIZE } from "@/lib/pagination";
 import { applyToJobSchema, updateApplicationStatusSchema } from "@/lib/schemas";
 import { Prisma } from "@/generated/prisma/client";
+import { recordAuditEvent } from "@/lib/audit";
 
 export async function applyToJob(jobId: string) {
   const user = await requireAuth(["WORKER"]);
@@ -20,8 +21,19 @@ export async function applyToJob(jobId: string) {
   if (!job || job.status !== "ACTIVE") return { error: "Job is not available" };
 
   try {
-    await prisma.application.create({
-      data: { jobId, workerId: user.id },
+    await prisma.$transaction(async (tx) => {
+      await tx.application.create({
+        data: { jobId, workerId: user.id },
+      });
+
+      await tx.notification.create({
+        data: {
+          userId: job.employerId,
+          title: "New Application",
+          message: `${user.name || "A worker"} applied to ${job.title}`,
+          type: "APPLICATION",
+        },
+      });
     });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
@@ -30,16 +42,8 @@ export async function applyToJob(jobId: string) {
     throw e;
   }
 
-  await prisma.notification.create({
-    data: {
-      userId: job.employerId,
-      title: "New Application",
-      message: `${user.name || "A worker"} applied to ${job.title}`,
-      type: "APPLICATION",
-    },
-  });
-
   updateTag("applications");
+  await recordAuditEvent({ action: "APPLICATION_CREATED", actorId: user.id, actorRole: "WORKER", resource: "application", metadata: { jobId, jobTitle: job.title } });
   return { success: true };
 }
 
@@ -63,11 +67,6 @@ export async function updateApplicationStatus(
     return { error: "Unauthorized" };
   }
 
-  await prisma.application.update({
-    where: { id: applicationId },
-    data: { status },
-  });
-
   const employerProfile = await prisma.employerProfile.findUnique({
     where: { userId: user.id },
     select: { companyName: true },
@@ -77,40 +76,48 @@ export async function updateApplicationStatus(
   const encodedTitle = encodeURIComponent(application.job.title);
   const whatsappUrl = `https://wa.me/91${user.phone}?text=Hi%20${encodedCompany}%2C%20I%20was%20shortlisted%20for%20${encodedTitle}%20on%20Workforce`;
 
-  if (status === "SHORTLISTED") {
-    await prisma.notification.create({
-      data: {
-        userId: application.workerId,
-        title: "Congratulations! You're Shortlisted",
-        message: `You have been shortlisted for ${application.job.title} at ${companyName}. Contact the employer on WhatsApp: ${whatsappUrl}`,
-        type: "SHORTLIST",
-      },
+  await prisma.$transaction(async (tx) => {
+    await tx.application.update({
+      where: { id: applicationId },
+      data: { status },
     });
-  }
 
-  if (status === "HIRED") {
-    await prisma.notification.create({
-      data: {
-        userId: application.workerId,
-        title: "You're Hired!",
-        message: `You have been hired for ${application.job.title} at ${companyName}. Contact them on WhatsApp: ${whatsappUrl}`,
-        type: "HIRE",
-      },
-    });
-  }
+    if (status === "SHORTLISTED") {
+      await tx.notification.create({
+        data: {
+          userId: application.workerId,
+          title: "Congratulations! You're Shortlisted",
+          message: `You have been shortlisted for ${application.job.title} at ${companyName}. Contact the employer on WhatsApp: ${whatsappUrl}`,
+          type: "SHORTLIST",
+        },
+      });
+    }
 
-  if (status === "REJECTED") {
-    await prisma.notification.create({
-      data: {
-        userId: application.workerId,
-        title: "Application Update",
-        message: `Your application for ${application.job.title} at ${companyName} was not selected. Keep applying to other jobs.`,
-        type: "REJECT",
-      },
-    });
-  }
+    if (status === "HIRED") {
+      await tx.notification.create({
+        data: {
+          userId: application.workerId,
+          title: "You're Hired!",
+          message: `You have been hired for ${application.job.title} at ${companyName}. Contact them on WhatsApp: ${whatsappUrl}`,
+          type: "HIRE",
+        },
+      });
+    }
+
+    if (status === "REJECTED") {
+      await tx.notification.create({
+        data: {
+          userId: application.workerId,
+          title: "Application Update",
+          message: `Your application for ${application.job.title} at ${companyName} was not selected. Keep applying to other jobs.`,
+          type: "REJECT",
+        },
+      });
+    }
+  });
 
   updateTag("applications");
+  await recordAuditEvent({ action: "APPLICATION_UPDATED", actorId: user.id, actorRole: "EMPLOYER", resource: "application", resourceId: applicationId, newValues: { status }, metadata: { jobTitle: application.job.title } });
   return { success: true };
 }
 

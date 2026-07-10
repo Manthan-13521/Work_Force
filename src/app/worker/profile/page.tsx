@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/shared/badge";
+import { Badge } from "@/components/ui/badge";
 import { getCurrentUser } from "@/lib/auth";
 import Image from "next/image";
 import { formatCurrency } from "@/lib/utils";
@@ -15,24 +15,27 @@ export default async function WorkerProfilePage() {
   const profile = user.workerProfile;
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold mb-6">My Profile</h1>
+    <div className="p-5 lg:p-6 max-w-2xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-xl font-bold tracking-tight">My Profile</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Manage your profile and documents</p>
+      </div>
 
-      <Card className="mb-6">
+      <Card variant="ghost" className="border">
         <CardContent className="p-6">
-          <div className="flex items-center gap-6 mb-6">
-            <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
+          <div className="flex items-center gap-5 mb-6">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center shrink-0">
               {profile?.photoUrl ? (
-                <Image src={profile.photoUrl} alt="" width={80} height={80} className="w-20 h-20 rounded-full object-cover" />
+                <Image src={profile.photoUrl} alt="" width={64} height={64} sizes="64px" className="w-16 h-16 rounded-full object-cover" />
               ) : (
-                <UserIcon className="h-8 w-8 text-muted-foreground" />
+                <UserIcon className="h-7 w-7 text-muted-foreground" strokeWidth={1.5} />
               )}
             </div>
-            <div>
-              <h2 className="text-xl font-semibold">{user.name || "Add your name"}</h2>
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold truncate">{user.name || "Add your name"}</h2>
               <p className="text-sm text-muted-foreground">{profile?.trade || "No trade selected"}</p>
               <div className="flex items-center gap-2 mt-1">
-                <Badge variant={profile?.isVerified ? "success" : "outline"}>
+                <Badge variant={profile?.isVerified ? "success" : "warning"} size="sm">
                   {profile?.isVerified ? "Verified" : "Unverified"}
                 </Badge>
               </div>
@@ -59,11 +62,11 @@ export default async function WorkerProfilePage() {
           </div>
 
           {profile?.languages && profile.languages.length > 0 && (
-            <div className="mb-4">
-              <p className="text-sm text-muted-foreground mb-1">Languages</p>
-              <div className="flex gap-2">
+            <div className="mb-5">
+              <p className="text-sm text-muted-foreground mb-1.5">Languages</p>
+              <div className="flex gap-2 flex-wrap">
                 {profile.languages.map((lang) => (
-                  <Badge key={lang} variant="outline">{lang}</Badge>
+                  <Badge key={lang} variant="secondary" size="sm">{lang}</Badge>
                 ))}
               </div>
             </div>
@@ -84,9 +87,9 @@ export default async function WorkerProfilePage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card variant="ghost" className="border">
         <CardHeader>
-          <CardTitle>Edit Profile</CardTitle>
+          <CardTitle className="text-sm font-semibold">Edit Profile</CardTitle>
           <CardDescription>Update your trade, experience, and preferences</CardDescription>
         </CardHeader>
         <CardContent>

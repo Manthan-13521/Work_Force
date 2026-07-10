@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { createReportSchema } from "@/lib/schemas";
+import { recordAuditEvent } from "@/lib/audit";
 
 export async function createReport(data: {
   targetType: "JOB" | "WORKER" | "EMPLOYER";
@@ -22,5 +23,6 @@ export async function createReport(data: {
       reason: parsed.data.reason,
     },
   });
+  await recordAuditEvent({ action: "REPORT_CREATED", actorId: user.id, actorRole: user.role, resource: "report", newValues: { targetType: parsed.data.targetType, targetId: parsed.data.targetId, reason: parsed.data.reason } });
   return { success: true };
 }

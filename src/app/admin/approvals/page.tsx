@@ -30,14 +30,17 @@ export default async function AdminApprovalsPage(props: { searchParams: Promise<
   );
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Approvals</h1>
+    <div className="p-5 lg:p-6 max-w-7xl mx-auto space-y-5">
+      <div>
+        <h1 className="text-xl font-bold tracking-tight">Approvals</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Verify pending employers and workers</p>
+      </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
-        <Card>
+      <div className="grid md:grid-cols-2 gap-5">
+        <Card variant="ghost" className="border">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <Building className="h-4 w-4 text-muted-foreground" />
               Employer Verifications
             </CardTitle>
           </CardHeader>
@@ -48,14 +51,14 @@ export default async function AdminApprovalsPage(props: { searchParams: Promise<
               <div className="space-y-3">
                 {pendingEmployers.map((u) => (
                   <div key={u.id} className="p-4 rounded-lg border">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <p className="font-medium">{u.employerProfile?.companyName || u.name}</p>
-                        <p className="text-sm text-muted-foreground">{u.phone}</p>
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{u.employerProfile?.companyName || u.name}</p>
+                        <p className="text-xs text-muted-foreground">{u.phone}</p>
                       </div>
                       <ApproveButton userId={u.id} type="employer" />
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground space-y-0.5">
                       <p>Industry: {u.employerProfile?.industry || "N/A"}</p>
                       <p>GST: {u.employerProfile?.gstNumber || "Not provided"}</p>
                       <p>Joined: {formatDate(new Date(u.createdAt))}</p>
@@ -67,10 +70,10 @@ export default async function AdminApprovalsPage(props: { searchParams: Promise<
           </CardContent>
         </Card>
 
-        <Card>
+        <Card variant="ghost" className="border">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+              <User className="h-4 w-4 text-muted-foreground" />
               Worker Verifications
             </CardTitle>
           </CardHeader>
@@ -81,14 +84,14 @@ export default async function AdminApprovalsPage(props: { searchParams: Promise<
               <div className="space-y-3">
                 {pendingWorkers.map((u) => (
                   <div key={u.id} className="p-4 rounded-lg border">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <p className="font-medium">{u.name || "Unknown"}</p>
-                        <p className="text-sm text-muted-foreground">{u.phone}</p>
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{u.name || "Unknown"}</p>
+                        <p className="text-xs text-muted-foreground">{u.phone}</p>
                       </div>
                       <ApproveButton userId={u.id} type="worker" />
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground space-y-0.5">
                       <p>Trade: {u.workerProfile?.trade || "N/A"}</p>
                       <p>Has ID doc: {u.workerProfile?.idDocUrl ? "Yes" : "No"}</p>
                       <p>Joined: {formatDate(new Date(u.createdAt))}</p>

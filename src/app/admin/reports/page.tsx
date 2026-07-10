@@ -8,6 +8,7 @@ import { formatRelativeTime } from "@/lib/utils";
 import { getPaginationParams } from "@/lib/pagination";
 import { Pagination } from "@/components/shared/pagination";
 import { ReportActions } from "./report-actions";
+import { Shield } from "lucide-react";
 
 export default async function AdminReportsPage(props: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const searchParams = await props.searchParams;
@@ -23,39 +24,44 @@ export default async function AdminReportsPage(props: { searchParams: Promise<Re
   const { data: reports, nextCursor, hasMore } = await getReports({ cursor, limit });
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Reports</h1>
+    <div className="p-5 lg:p-6 max-w-7xl mx-auto space-y-5">
+      <div>
+        <h1 className="text-xl font-bold tracking-tight">Reports</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Moderate reported content</p>
+      </div>
 
-      <Card>
+      <Card variant="ghost" className="border">
         <CardContent className="p-0">
           {reports.length === 0 ? (
             <div className="p-6">
-              <EmptyState title="No reports" description="All clear! No reported content." />
+              <EmptyState icon={<Shield className="h-8 w-8" />} title="No reports" description="All clear! No reported content." />
             </div>
           ) : (
             <div className="divide-y">
               {reports.map((report) => (
-                <div key={report.id} className="p-4 flex items-start justify-between">
-                  <div>
+                <div key={report.id} className="p-4 flex items-start justify-between gap-4">
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <p className="font-medium text-sm">Report #{report.id.slice(0, 8)}</p>
                       <StatusBadge status={report.status} />
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      <strong>Target:</strong> {report.targetType} ({report.targetId.slice(0, 8)})
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      <strong>Reason:</strong> {report.reason}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Reported by {report.reporter?.name || report.reporter?.phone || "Unknown"} • {formatRelativeTime(new Date(report.createdAt))}
+                    <div className="space-y-0.5">
+                      <p className="text-sm text-muted-foreground">
+                        <span className="text-foreground/70 font-medium">Target:</span> {report.targetType} ({report.targetId.slice(0, 8)})
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        <span className="text-foreground/70 font-medium">Reason:</span> {report.reason}
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      Reported by {report.reporter?.name || report.reporter?.phone || "Unknown"} &bull; {formatRelativeTime(new Date(report.createdAt))}
                     </p>
                   </div>
                   <ReportActions reportId={report.id} status={report.status} />
                 </div>
               ))}
-              </div>
-            )}
+            </div>
+          )}
         </CardContent>
       </Card>
       <Pagination hasMore={hasMore} nextCursor={nextCursor} />

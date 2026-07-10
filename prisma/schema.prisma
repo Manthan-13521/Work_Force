@@ -96,6 +96,8 @@ model User {
   @@index([role])
   @@index([status])
   @@index([city])
+  @@index([role, status])
+  @@index([createdAt])
 }
 
 model WorkerProfile {
@@ -121,6 +123,7 @@ model WorkerProfile {
   @@index([experienceYears])
   @@index([isVerified, experienceYears])
   @@index([expectedSalary])
+  @@index([rating])
 }
 
 model EmployerProfile {
@@ -141,6 +144,7 @@ model EmployerProfile {
 
   @@index([isVerified])
   @@index([industry])
+  @@index([rating])
 }
 
 model Job {
@@ -179,6 +183,9 @@ model Job {
   @@index([status, category, city])
   @@index([status, shiftType])
   @@index([status, city, salaryMin])
+  @@index([isFeatured, status])
+  @@index([city, status])
+  @@index([category, status])
 }
 
 model JobView {
@@ -256,6 +263,7 @@ model Payment {
   @@index([razorpayOrderId])
   @@index([status])
   @@index([createdAt])
+  @@index([userId, status])
   @@index([userId, createdAt])
   @@index([razorpayOrderId, status])
 }
@@ -292,6 +300,7 @@ model Notification {
   @@index([userId])
   @@index([userId, read, createdAt])
   @@index([userId, createdAt])
+  @@index([type, createdAt])
 }
 
 model Category {
@@ -320,4 +329,57 @@ model City {
   createdAt DateTime @default(now())
 
   @@index([name])
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  REGISTER
+  OTP_SENT
+  OTP_VERIFIED
+  JOB_CREATED
+  JOB_UPDATED
+  JOB_CLOSED
+  JOB_DELETED
+  APPLICATION_CREATED
+  APPLICATION_UPDATED
+  PAYMENT_INITIATED
+  PAYMENT_COMPLETED
+  PAYMENT_FAILED
+  CREDIT_PURCHASED
+  EMPLOYER_VERIFIED
+  WORKER_VERIFIED
+  ADMIN_APPROVAL
+  ROLE_CHANGED
+  PROFILE_UPDATED
+  WEBHOOK_RECEIVED
+  WEBHOOK_FAILED
+  REPORT_CREATED
+  REPORT_RESOLVED
+  EXPORT
+  SYSTEM
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  timestamp   DateTime    @default(now())
+  actorId     String?
+  actorRole   Role?
+  action      AuditAction
+  resource    String?
+  resourceId  String?
+  metadata    Json?
+  oldValues   Json?
+  newValues   Json?
+  ip          String?
+  userAgent   String?
+  traceId     String?
+  requestId   String?
+
+  @@index([timestamp])
+  @@index([actorId])
+  @@index([action])
+  @@index([resource, resourceId])
+  @@index([actorId, timestamp])
+  @@index([action, timestamp])
 }

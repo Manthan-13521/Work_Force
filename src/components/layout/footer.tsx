@@ -1,44 +1,89 @@
 import Link from "next/link";
-import { Briefcase } from "lucide-react";
+import { Shield } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="border-t bg-muted/50 mt-auto">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div>
-            <Link href="/" className="flex items-center gap-2 font-bold text-lg mb-4">
-              <Briefcase className="h-5 w-5 text-primary" />
-              <span>Workforce</span>
-            </Link>
-            <p className="text-sm text-muted-foreground">
-              Verified industrial labour hiring platform for Hyderabad. Connecting trusted employers with skilled workers.
+    <footer className="border-t bg-muted/30 mt-auto">
+      <div className="mx-auto px-5 lg:px-8 py-12 max-w-7xl">
+        <div className="grid md:grid-cols-4 gap-10">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center h-6 w-6 rounded-md bg-primary text-primary-foreground font-bold text-[10px]">
+                W
+              </div>
+              <span className="font-semibold text-sm">Workforce</span>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+              The trusted platform connecting verified industrial workers with vetted employers in Hyderabad.
             </p>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Shield className="h-3 w-3" />
+              OTP verified since 2024
+            </div>
           </div>
+
           <div>
-            <h3 className="font-semibold mb-3 text-sm">For Workers</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/jobs" className="hover:text-primary transition-colors">Browse Jobs</Link></li>
-              <li><Link href="/register" className="hover:text-primary transition-colors">Create Profile</Link></li>
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">For Workers</h4>
+            <ul className="space-y-2.5">
+              {[
+                { href: "/jobs", label: "Browse Jobs" },
+                { href: "/register", label: "Create Account" },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
+
           <div>
-            <h3 className="font-semibold mb-3 text-sm">For Employers</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/pricing" className="hover:text-primary transition-colors">Pricing</Link></li>
-              <li><Link href="/register" className="hover:text-primary transition-colors">Post a Job</Link></li>
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">For Employers</h4>
+            <ul className="space-y-2.5">
+              {[
+                { href: "/register?role=employer", label: "Post a Job" },
+                { href: "/pricing", label: "Pricing" },
+                { href: "/register?role=employer", label: "Register Company" },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
+
           <div>
-            <h3 className="font-semibold mb-3 text-sm">Company</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link href="/about" className="hover:text-primary transition-colors">About</Link></li>
-              <li><Link href="/contact" className="hover:text-primary transition-colors">Contact</Link></li>
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Company</h4>
+            <ul className="space-y-2.5">
+              {[
+                { href: "/about", label: "About Us" },
+                { href: "/contact", label: "Contact" },
+                { href: "/pricing", label: "Pricing" },
+              ].map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
-        <div className="border-t mt-8 pt-6 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} Workforce. All rights reserved. Hyderabad, India.
+
+        <div className="mt-10 pt-6 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-muted-foreground">
+            &copy; {new Date().getFullYear()} Workforce. All rights reserved.
+          </p>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span>Registered in India</span>
+            <span className="w-1 h-1 rounded-full bg-border" />
+            <span>256-bit encrypted</span>
+            <span className="w-1 h-1 rounded-full bg-border" />
+            <span>Data protected</span>
+          </div>
         </div>
       </div>
     </footer>

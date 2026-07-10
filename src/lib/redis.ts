@@ -9,18 +9,32 @@ function createRedisClient() {
       token: env.UPSTASH_REDIS_REST_TOKEN,
     });
   }
-  if (env.NODE_ENV === "production") {
-    logger.warn(
-      "UPSTASH_REDIS not configured — rate limiting and OTP storage will use per-instance in-memory fallback"
-    );
+  if (env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
+    logger.warn("UPSTASH_REDIS not configured — rate limiting and OTP storage will use per-instance in-memory fallback");
   }
   return null;
 }
 
 export const redis = createRedisClient();
 
-// In-memory fallback for development when Redis is not configured
+const MAX_MEMORY_STORE_ENTRIES = 10_000;
 const memoryStore = new Map<string, { value: string; expiresAt: number }>();
+
+let redisFallbackLogged = false;
+
+function logRedisFallback(op: string) {
+  if (!redisFallbackLogged) {
+    redisFallbackLogged = true;
+    logger.warn("Redis unavailable — falling back to in-memory store", { op });
+  }
+}
+
+function evictMemoryStore() {
+  if (memoryStore.size >= MAX_MEMORY_STORE_ENTRIES) {
+    const key = memoryStore.keys().next().value;
+    if (key) memoryStore.delete(key);
+  }
+}
 
 export async function redisSet(key: string, value: string, ttlSeconds: number): Promise<void> {
   if (redis) {
@@ -28,9 +42,10 @@ export async function redisSet(key: string, value: string, ttlSeconds: number): 
       await redis.set(key, value, { ex: ttlSeconds });
       return;
     } catch {
-      // Redis unavailable — fall through to memory store
+      logRedisFallback("set");
     }
   }
+  evictMemoryStore();
   memoryStore.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
 }
 
@@ -39,7 +54,7 @@ export async function redisGet(key: string): Promise<string | null> {
     try {
       return await redis.get<string>(key);
     } catch {
-      // Redis unavailable — fall through to memory store
+      logRedisFallback("get");
     }
   }
   const record = memoryStore.get(key);
@@ -57,13 +72,31 @@ export async function redisDel(key: string): Promise<void> {
       await redis.del(key);
       return;
     } catch {
-      // Redis unavailable — fall through to memory store
+      logRedisFallback("del");
     }
   }
   memoryStore.delete(key);
 }
 
-// Rate limiting: returns true if allowed, false if rate-limited
+const memoryLocks = new Map<string, Promise<boolean>>();
+
+export async function atomicReadDelete(key: string): Promise<string | null> {
+  if (redis) {
+    try {
+      const result = await redis.set(key, "", { xx: true, get: true });
+      if (result === null || result === "") return null;
+      return result;
+    } catch {
+      logRedisFallback("atomicReadDelete");
+    }
+  }
+  const record = memoryStore.get(key);
+  if (!record) return null;
+  memoryStore.delete(key);
+  if (Date.now() > record.expiresAt) return null;
+  return record.value;
+}
+
 export async function checkRateLimit(
   key: string,
   maxAttempts: number,
@@ -71,33 +104,41 @@ export async function checkRateLimit(
 ): Promise<boolean> {
   if (redis) {
     try {
-      const current = await redis.get<number>(key);
-      if (current === null) {
-        await redis.set(key, 1, { ex: windowSeconds });
-        return true;
+      const count = await redis.incr(key);
+      if (count === 1) {
+        await redis.expire(key, windowSeconds);
       }
-      if (current >= maxAttempts) return false;
-      await redis.incr(key);
-      return true;
+      return count <= maxAttempts;
     } catch {
-      // Redis unavailable — fall through to memory store
+      logRedisFallback("rateLimit");
     }
   }
 
-  // In-memory fallback
-  const record = memoryStore.get(key);
-  if (!record) {
-    memoryStore.set(key, { value: "1", expiresAt: Date.now() + windowSeconds * 1000 });
-    return true;
-  }
-  if (Date.now() > record.expiresAt) {
-    memoryStore.set(key, { value: "1", expiresAt: Date.now() + windowSeconds * 1000 });
-    return true;
-  }
-  const count = parseInt(record.value, 10);
-  if (count >= maxAttempts) return false;
-  memoryStore.set(key, { value: String(count + 1), expiresAt: record.expiresAt });
-  return true;
+  const next = (async () => {
+    const record = memoryStore.get(key);
+    const now = Date.now();
+
+    if (!record || now > record.expiresAt) {
+      evictMemoryStore();
+      memoryStore.set(key, { value: "1", expiresAt: now + windowSeconds * 1000 });
+      return 1 <= maxAttempts;
+    }
+
+    const count = parseInt(record.value, 10) + 1;
+    memoryStore.set(key, { value: String(count), expiresAt: record.expiresAt });
+    return count <= maxAttempts;
+  })();
+
+  const prev = memoryLocks.get(key) || Promise.resolve(true);
+  const chain = prev.then(() => next);
+  chain.finally(() => {
+    if (memoryLocks.get(key) === chain) {
+      memoryLocks.delete(key);
+    }
+  });
+  memoryLocks.set(key, chain);
+
+  return chain;
 }
 
 export function getClientIp(request: Request): string {

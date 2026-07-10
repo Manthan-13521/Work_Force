@@ -50,8 +50,10 @@ async function main() {
     CLOUDINARY_API_SECRET,
     RAZORPAY_KEY_ID,
     RAZORPAY_KEY_SECRET,
+    RAZORPAY_WEBHOOK_SECRET,
     MSG91_AUTH_KEY,
     SENTRY_DSN,
+    NEXT_PUBLIC_APP_URL,
   } = process.env;
 
   console.log("\n🔍 Production Integration Validation\n");
@@ -128,6 +130,19 @@ async function main() {
   } else {
     results.push({ service: "MSG91", status: "skip" });
   }
+
+  // Production env vars
+  results.push({
+    service: "NEXT_PUBLIC_APP_URL",
+    status: NEXT_PUBLIC_APP_URL ? "ok" : "fail",
+    ...(NEXT_PUBLIC_APP_URL ? {} : { error: "REQUIRED in production for CSRF origin validation" }),
+  });
+
+  results.push({
+    service: "RAZORPAY_WEBHOOK_SECRET",
+    status: RAZORPAY_WEBHOOK_SECRET ? "ok" : "fail",
+    ...(RAZORPAY_WEBHOOK_SECRET ? {} : { error: "REQUIRED in production for webhook signature verification" }),
+  });
 
   // Sentry
   if (SENTRY_DSN) {

@@ -3,7 +3,10 @@
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { backgroundTasks } from "@/lib/background";
-import { cached, cacheKey } from "@/lib/cache";
+import { Tags } from "@/lib/cache";
+import { cacheKey } from "@/lib/cache/keys";
+import { cached } from "@/lib/cache/cache";
+import { TTL } from "@/lib/cache/ttl";
 
 export async function getPublicStats() {
   return cached(cacheKey("public-stats"), async () => {
@@ -14,20 +17,27 @@ export async function getPublicStats() {
     ]);
 
     return { activeWorkers, verifiedEmployers, totalHires };
-  }, { ttl: 300 });
+  }, { freshTtl: 300, staleTtl: 600 });
 }
 
 export async function trackJobView(jobId: string) {
-  await prisma.jobView.create({ data: { jobId } });
+  await prisma.jobView.create({ data: { jobId } }).catch(() => {});
   await backgroundTasks.cleanupOldJobViews();
 }
 
 export async function getEmployerAnalytics() {
   const user = await requireAuth(["EMPLOYER"]);
+  return cached(
+    cacheKey("analytics:employer", user.id),
+    () => getEmployerAnalyticsInner(user.id),
+    { freshTtl: TTL.ANALYTICS.fresh, staleTtl: TTL.ANALYTICS.stale, tags: [Tags.DASHBOARD_EMPLOYER] },
+  );
+}
 
+async function getEmployerAnalyticsInner(employerId: string) {
   const [jobs, applicationCounts] = await Promise.all([
     prisma.job.findMany({
-      where: { employerId: user.id },
+      where: { employerId },
       select: {
         id: true,
         title: true,
@@ -39,7 +49,7 @@ export async function getEmployerAnalytics() {
     }),
     prisma.application.groupBy({
       by: ["jobId", "status"],
-      where: { job: { employerId: user.id } },
+      where: { job: { employerId } },
       _count: true,
     }),
   ]);
@@ -86,7 +96,14 @@ export async function getEmployerAnalytics() {
 
 export async function getAdminAnalytics() {
   await requireAuth(["ADMIN"]);
+  return cached(
+    cacheKey("analytics:admin"),
+    () => getAdminAnalyticsInner(),
+    { freshTtl: TTL.ANALYTICS.fresh, staleTtl: TTL.ANALYTICS.stale, tags: [Tags.DASHBOARD_ADMIN, Tags.STATISTICS] },
+  );
+}
 
+async function getAdminAnalyticsInner() {
   const [totalUsers, totalWorkers, totalEmployers, totalJobs, totalApplications, totalViews, totalHires, totalRevenue] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { role: "WORKER" } }),

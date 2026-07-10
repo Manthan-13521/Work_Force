@@ -3,7 +3,8 @@ import { cookies } from "next/headers";
 import { cache } from "react";
 import { prisma } from "./prisma";
 import { env } from "@/env";
-import { redisSet, redisGet, redisDel, checkRateLimit } from "./redis";
+import { redisSet, checkRateLimit, atomicReadDelete } from "./redis";
+import { constantTimeEqual } from "./utils";
 import { logger } from "./logger";
 import { retry } from "./retry";
 import { withTimeout } from "./timeout";
@@ -120,10 +121,9 @@ export async function storeOTP(phone: string, otp: string) {
 }
 
 export async function verifyOTP(phone: string, otp: string): Promise<boolean> {
-  const stored = await redisGet(`otp:${phone}`);
+  const stored = await atomicReadDelete(`otp:${phone}`);
   if (!stored) return false;
-  if (stored !== otp) return false;
-  await redisDel(`otp:${phone}`);
+  if (!constantTimeEqual(stored, otp)) return false;
   return true;
 }
 

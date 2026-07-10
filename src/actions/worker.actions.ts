@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { revalidateTag } from "next/cache";
 import { getPaginationParams, buildPaginatedResponse } from "@/lib/pagination";
 import { updateWorkerProfileSchema } from "@/lib/schemas";
+import { recordAuditEvent } from "@/lib/audit";
 
 export async function updateWorkerProfile(data: {
   trade?: string;
@@ -29,6 +30,7 @@ export async function updateWorkerProfile(data: {
   });
 
   revalidateTag("worker-profile", "max");
+  await recordAuditEvent({ action: "PROFILE_UPDATED", actorId: user.id, actorRole: "WORKER", resource: "worker_profile", resourceId: user.id, newValues: parsed.data });
   return { success: true };
 }
 

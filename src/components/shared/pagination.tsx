@@ -1,52 +1,58 @@
 "use client";
 
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 interface PaginationProps {
+  cursor?: string | null;
+  nextCursor?: string | null;
   hasMore: boolean;
-  nextCursor: string | null;
-  className?: string;
 }
 
-export function Pagination({ hasMore, nextCursor, className }: PaginationProps) {
-  const router = useRouter();
+export function Pagination({ cursor, nextCursor, hasMore }: PaginationProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const currentCursor = searchParams.get("cursor");
+  const effectiveCursor = cursor ?? nextCursor ?? null;
 
-  function goToPage(cursor: string | null) {
+  function navigate(newCursor: string | null) {
     const params = new URLSearchParams(searchParams.toString());
-    if (cursor) {
-      params.set("cursor", cursor);
+    if (newCursor) {
+      params.set("cursor", newCursor);
     } else {
       params.delete("cursor");
     }
-    router.push(`?${params.toString()}`);
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname);
   }
 
-  if (!hasMore && !currentCursor) return null;
+  if (!effectiveCursor && !hasMore && !currentCursor) return null;
 
   return (
-    <div className={cn("flex items-center justify-center gap-2 mt-8", className)}>
-      {currentCursor && (
-        <button
-          onClick={() => goToPage(null)}
-          className="inline-flex items-center justify-center rounded-md border border-input bg-background p-2 text-sm font-medium hover:bg-accent transition-colors"
-          aria-label="Previous page"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-      )}
-      {hasMore && nextCursor && (
-        <button
-          onClick={() => goToPage(nextCursor)}
-          className="inline-flex items-center justify-center rounded-md border border-input bg-background p-2 text-sm font-medium hover:bg-accent transition-colors"
+    <nav className="flex items-center justify-center gap-2 pt-4" aria-label="Pagination">
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={!currentCursor}
+        onClick={() => navigate(null)}
+        aria-label="Previous page"
+      >
+        <ChevronLeft className="h-4 w-4" />
+        Previous
+      </Button>
+      {hasMore && effectiveCursor && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate(effectiveCursor)}
           aria-label="Next page"
         >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+          Next
+          <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
       )}
-    </div>
+    </nav>
   );
 }

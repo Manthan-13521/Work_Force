@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { postJob } from "@/actions/job.actions";
 import { SHIFT_TYPES, JOB_TYPES, HYDERABAD_ZONES } from "@/lib/constants";
-
 
 const JOB_CATEGORIES = [
   "Assembly",
@@ -94,17 +94,12 @@ export default function PostJobPage() {
                     required
                   />
                 </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Category *</label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                    required
-                  >
-                    <option value="">Select category</option>
-                    {JOB_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground/90 block">Category *</label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                    <SelectContent>{JOB_CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="text-sm font-medium mb-1 block">Description</label>
@@ -151,25 +146,19 @@ export default function PostJobPage() {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Shift Type *</label>
-                  <select
-                    value={shiftType}
-                    onChange={(e) => setShiftType(e.target.value)}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    {SHIFT_TYPES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-                  </select>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground/90 block">Shift Type *</label>
+                  <Select value={shiftType} onValueChange={setShiftType}>
+                    <SelectTrigger><SelectValue placeholder="Select shift" /></SelectTrigger>
+                    <SelectContent>{SHIFT_TYPES.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Job Type *</label>
-                  <select
-                    value={jobType}
-                    onChange={(e) => setJobType(e.target.value)}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    {JOB_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground/90 block">Job Type *</label>
+                  <Select value={jobType} onValueChange={setJobType}>
+                    <SelectTrigger><SelectValue placeholder="Select job type" /></SelectTrigger>
+                    <SelectContent>{JOB_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+                  </Select>
                 </div>
                 <div className="flex gap-3">
                   <Button type="button" variant="outline" onClick={() => setStep(1)} className="flex-1">Back</Button>
@@ -189,16 +178,15 @@ export default function PostJobPage() {
                     required
                   />
                 </div>
-                <div>
-                  <label className="text-sm font-medium mb-1 block">City</label>
-                  <select
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                  >
-                    {HYDERABAD_ZONES.map((z) => <option key={z} value={z}>{z}</option>)}
-                    <option value="Hyderabad">Hyderabad (Other)</option>
-                  </select>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-foreground/90 block">City</label>
+                  <Select value={city} onValueChange={setCity}>
+                    <SelectTrigger><SelectValue placeholder="Select city/zone" /></SelectTrigger>
+                    <SelectContent>
+                      {HYDERABAD_ZONES.map((z) => <SelectItem key={z} value={z}>{z}</SelectItem>)}
+                      <SelectItem value="Hyderabad">Hyderabad (Other)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex gap-3">
                   <Button type="button" variant="outline" onClick={() => setStep(2)} className="flex-1">Back</Button>

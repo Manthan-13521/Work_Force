@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/shared/badge";
+import { Badge } from "@/components/ui/badge";
 import { getCurrentUser } from "@/lib/auth";
 import { CompanyProfileForm } from "./company-profile-form";
 
@@ -11,17 +11,20 @@ export default async function EmployerProfilePage() {
   const profile = user.employerProfile;
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold mb-6">Company Profile</h1>
+    <div className="p-5 lg:p-6 max-w-2xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-xl font-bold tracking-tight">Company Profile</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Manage your company information</p>
+      </div>
 
       {profile && (
-        <Card className="mb-6">
+        <Card variant="ghost" className="border">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-4">
               <div>
-                <h2 className="text-xl font-semibold">{profile.companyName}</h2>
+                <h2 className="text-lg font-semibold">{profile.companyName}</h2>
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge variant={profile.isVerified ? "success" : "outline"}>
+                  <Badge variant={profile.isVerified ? "success" : "warning"} size="sm">
                     {profile.isVerified ? "Verified Employer" : "Pending Verification"}
                   </Badge>
                 </div>
@@ -41,9 +44,9 @@ export default async function EmployerProfilePage() {
         </Card>
       )}
 
-      <Card>
+      <Card variant="ghost" className="border">
         <CardHeader>
-          <CardTitle>Edit Company Details</CardTitle>
+          <CardTitle className="text-sm font-semibold">Edit Company Details</CardTitle>
           <CardDescription>Update your company information for verification</CardDescription>
         </CardHeader>
         <CardContent>

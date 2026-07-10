@@ -1,82 +1,104 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { redis } from "@/lib/redis";
 import { env } from "@/env";
+import { redis } from "@/lib/redis";
+
+type HealthStatus = "healthy" | "degraded" | "unhealthy";
+
+type ComponentCheck = {
+  status: HealthStatus;
+  latencyMs: number;
+  error?: string;
+};
+
+type HealthResponse = {
+  status: HealthStatus;
+  timestamp: string;
+  components: Record<string, ComponentCheck>;
+  environment: string;
+  uptime: number;
+};
+
+async function checkDb(): Promise<ComponentCheck> {
+  const start = Date.now();
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return { status: "healthy", latencyMs: Date.now() - start };
+  } catch (e) {
+    return { status: "unhealthy", latencyMs: Date.now() - start, error: String(e) };
+  }
+}
+
+async function checkRedis(): Promise<ComponentCheck> {
+  if (!redis) return { status: "degraded", latencyMs: 0, error: "Not configured" };
+  const start = Date.now();
+  try {
+    await redis.ping();
+    return { status: "healthy", latencyMs: Date.now() - start };
+  } catch (e) {
+    return { status: "unhealthy", latencyMs: Date.now() - start, error: String(e) };
+  }
+}
+
+async function checkEnv(): Promise<ComponentCheck> {
+  const start = Date.now();
+  const required = [
+    "DATABASE_URL",
+    "NEXT_PUBLIC_APP_URL",
+    "JWT_SECRET",
+  ] as const;
+  const missing = required.filter((k) => !env[k as keyof typeof env]);
+  if (missing.length > 0) {
+    return { status: "unhealthy", latencyMs: Date.now() - start, error: `Missing env vars: ${missing.join(", ")}` };
+  }
+  return { status: "healthy", latencyMs: Date.now() - start };
+}
+
+async function checkStorage(): Promise<ComponentCheck> {
+  const start = Date.now();
+  try {
+    const { execSync } = await import("child_process");
+    const output = execSync("df -P / | tail -1 | awk '{print $5}'", { encoding: "utf-8", timeout: 5000 }).trim();
+    const pct = parseInt(output.replace("%", ""), 10);
+    if (isNaN(pct)) return { status: "degraded", latencyMs: Date.now() - start, error: "Cannot determine disk usage" };
+    if (pct > 90) return { status: "degraded", latencyMs: Date.now() - start, error: `Disk at ${pct}%` };
+    return { status: "healthy", latencyMs: Date.now() - start };
+  } catch {
+    return { status: "degraded", latencyMs: Date.now() - start, error: "Disk check unavailable in this environment" };
+  }
+}
 
 const startTime = Date.now();
-const nodeVersion = process.version;
-const buildVersion = process.env.VERCEL_GIT_COMMIT_SHA || process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA || "development";
-const memory = () => Math.round(process.memoryUsage().rss / 1024 / 1024);
-
-export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const start = Date.now();
-  const checks: Record<string, unknown> = {};
+  const [db, cacheComponent, envCheck, storage] = await Promise.all([
+    checkDb(),
+    checkRedis(),
+    checkEnv(),
+    checkStorage(),
+  ]);
 
-  // Database
-  try {
-    const dbStart = Date.now();
-    await prisma.$queryRaw`SELECT 1`;
-    checks.database = { status: "ok", latencyMs: Date.now() - dbStart };
-  } catch (e) {
-    checks.database = { status: "error", latencyMs: Date.now() - start, error: String(e) };
-  }
+  const components: Record<string, ComponentCheck> = {
+    database: db,
+    redis: cacheComponent,
+    environment: envCheck,
+    storage,
+  };
 
-  // Redis
-  if (redis) {
-    try {
-      const redisStart = Date.now();
-      await redis.set("__health", "1", { ex: 10 });
-      const redisVal = await redis.get("__health");
-      checks.redis = { status: redisVal === "1" ? "ok" : "degraded", latencyMs: Date.now() - redisStart };
-    } catch (e) {
-      checks.redis = { status: "error", error: String(e) };
-    }
-  } else {
-    checks.redis = { status: "unavailable", message: "Using in-memory fallback" };
-  }
+  const statuses = Object.values(components).map((c) => c.status);
+  let overall: HealthStatus = "healthy";
+  if (statuses.includes("unhealthy")) overall = "unhealthy";
+  else if (statuses.includes("degraded")) overall = "degraded";
 
-  // Cloudinary
-  if (env.CLOUDINARY_CLOUD_NAME) {
-    checks.cloudinary = { status: "configured", cloudName: env.CLOUDINARY_CLOUD_NAME };
-  } else {
-    checks.cloudinary = { status: "not_configured" };
-  }
+  const response: HealthResponse = {
+    status: overall,
+    timestamp: new Date().toISOString(),
+    components,
+    environment: env.NODE_ENV || "development",
+    uptime: Math.floor((Date.now() - startTime) / 1000),
+  };
 
-  // MSG91
-  if (env.MSG91_AUTH_KEY) {
-    checks.msg91 = { status: "configured" };
-  } else {
-    checks.msg91 = { status: "not_configured" };
-  }
-
-  // Razorpay
-  if (env.RAZORPAY_KEY_ID) {
-    checks.razorpay = { status: "configured", keyId: env.RAZORPAY_KEY_ID.slice(0, 8) + "..." };
-  } else {
-    checks.razorpay = { status: "not_configured" };
-  }
-
-  // Sentry
-  checks.sentry = { status: env.SENTRY_DSN ? "configured" : "not_configured" };
-
-  const degraded = Object.values(checks).some(
-    (c: unknown) => (c as Record<string, unknown>).status === "error"
-  );
-
-  return NextResponse.json(
-    {
-      status: degraded ? "degraded" : "ok",
-      version: buildVersion,
-      uptime: Math.floor((Date.now() - startTime) / 1000),
-      nodeVersion,
-      memory: `${memory()}MB`,
-      environment: env.NODE_ENV,
-      timestamp: new Date().toISOString(),
-      checks,
-      durationMs: Date.now() - start,
-    },
-    { status: degraded ? 503 : 200 }
-  );
+  return NextResponse.json(response, {
+    status: overall === "unhealthy" ? 503 : 200,
+  });
 }

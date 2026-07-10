@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { Badge } from "@/components/shared/badge";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { getCurrentUser } from "@/lib/auth";
 import { getJobApplications } from "@/actions/application.actions";
@@ -33,15 +33,15 @@ export default async function JobApplicantsPage(props: { params: Promise<{ id: s
   if (!job) notFound();
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">{job.title}</h1>
-        <p className="text-muted-foreground">{job.location || job.city} • {applications.length} applicant{applications.length !== 1 ? "s" : ""}</p>
+    <div className="p-5 lg:p-6 max-w-7xl mx-auto space-y-5">
+      <div>
+        <h1 className="text-xl font-bold tracking-tight">{job.title}</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">{job.location || job.city} &bull; {applications.length} applicant{applications.length !== 1 ? "s" : ""}</p>
       </div>
 
       {applications.length === 0 ? (
-        <Card>
-          <CardContent className="p-6">
+        <Card variant="ghost" className="border">
+          <CardContent>
             <EmptyState
               title="No applicants yet"
               description="Wait for workers to apply to this job"
@@ -49,13 +49,13 @@ export default async function JobApplicantsPage(props: { params: Promise<{ id: s
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {applications.map((app) => {
             const worker = app.worker;
             const profile = worker.workerProfile;
 
             return (
-              <Card key={app.id}>
+              <Card key={app.id} variant="ghost" className="border">
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">

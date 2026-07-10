@@ -16,6 +16,7 @@ import {
   idParamSchema,
 } from "@/lib/schemas";
 import { cached, cacheKey, invalidateCache } from "@/lib/cache";
+import { recordAuditEvent } from "@/lib/audit";
 
 export async function getAdminStats() {
   await requireAuth(["ADMIN"]);
@@ -66,17 +67,20 @@ export async function toggleUserStatus(userId: string) {
   const parsed = toggleUserStatusSchema.safeParse({ userId });
   if (!parsed.success) return;
 
-  const user = await prisma.user.findUnique({
-    where: { id: parsed.data.userId },
-    select: { status: true },
-  });
-  if (!user) return;
-
-  await prisma.user.update({
-    where: { id: parsed.data.userId },
-    data: { status: user.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE" },
+  const suspended = await prisma.user.updateMany({
+    where: { id: parsed.data.userId, status: "ACTIVE" },
+    data: { status: "SUSPENDED" },
   });
 
+  if (suspended.count === 0) {
+    const activated = await prisma.user.updateMany({
+      where: { id: parsed.data.userId, status: "SUSPENDED" },
+      data: { status: "ACTIVE" },
+    });
+    if (activated.count === 0) return;
+  }
+
+  await recordAuditEvent({ action: "ADMIN_APPROVAL", actorId: parsed.data.userId, actorRole: "ADMIN", resource: "user", resourceId: parsed.data.userId });
   revalidateTag("admin-users", "max");
 }
 
@@ -86,10 +90,13 @@ export async function verifyEmployer(employerId: string) {
   const parsed = verifyEmployerSchema.safeParse({ employerId });
   if (!parsed.success) return;
 
-  await prisma.employerProfile.update({
-    where: { userId: parsed.data.employerId },
+  const result = await prisma.employerProfile.updateMany({
+    where: { userId: parsed.data.employerId, isVerified: { not: true } },
     data: { isVerified: true, verifiedAt: new Date() },
   });
+  if (result.count === 0) return;
+
+  await recordAuditEvent({ action: "EMPLOYER_VERIFIED", actorId: parsed.data.employerId, actorRole: "ADMIN", resource: "employer_profile", resourceId: parsed.data.employerId });
   revalidateTag("admin-users", "max");
 }
 
@@ -99,10 +106,13 @@ export async function verifyWorker(workerId: string) {
   const parsed = verifyWorkerSchema.safeParse({ workerId });
   if (!parsed.success) return;
 
-  await prisma.workerProfile.update({
-    where: { userId: parsed.data.workerId },
+  const result = await prisma.workerProfile.updateMany({
+    where: { userId: parsed.data.workerId, isVerified: { not: true } },
     data: { isVerified: true },
   });
+  if (result.count === 0) return;
+
+  await recordAuditEvent({ action: "WORKER_VERIFIED", actorId: parsed.data.workerId, actorRole: "ADMIN", resource: "worker_profile", resourceId: parsed.data.workerId });
   revalidateTag("admin-users", "max");
 }
 
@@ -131,17 +141,20 @@ export async function toggleJobStatus(jobId: string) {
   const parsed = toggleJobStatusSchema.safeParse({ jobId });
   if (!parsed.success) return;
 
-  const job = await prisma.job.findUnique({
-    where: { id: parsed.data.jobId },
-    select: { status: true },
-  });
-  if (!job) return;
-
-  await prisma.job.update({
-    where: { id: parsed.data.jobId },
-    data: { status: job.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE" },
+  const suspended = await prisma.job.updateMany({
+    where: { id: parsed.data.jobId, status: "ACTIVE" },
+    data: { status: "SUSPENDED" },
   });
 
+  if (suspended.count === 0) {
+    const activated = await prisma.job.updateMany({
+      where: { id: parsed.data.jobId, status: "SUSPENDED" },
+      data: { status: "ACTIVE" },
+    });
+    if (activated.count === 0) return;
+  }
+
+  await recordAuditEvent({ action: "JOB_UPDATED", actorId: null, actorRole: "ADMIN", resource: "job", resourceId: parsed.data.jobId });
   revalidateTag("admin-jobs", "max");
 }
 
@@ -172,6 +185,7 @@ export async function updateReportStatus(reportId: string, status: "REVIEWED" | 
   if (!parsed.success) return;
 
   await prisma.report.update({ where: { id: parsed.data.reportId }, data: { status: parsed.data.status } });
+  await recordAuditEvent({ action: "REPORT_RESOLVED", actorId: null, actorRole: "ADMIN", resource: "report", resourceId: parsed.data.reportId, newValues: { status: parsed.data.status } });
   revalidateTag("admin-reports", "max");
 }
 
@@ -203,6 +217,7 @@ export async function createCategory(name: string) {
 
   const slug = parsed.data.name.toLowerCase().replace(/\s+/g, "-");
   await prisma.category.create({ data: { name: parsed.data.name, slug } });
+  await recordAuditEvent({ action: "SYSTEM", actorId: null, actorRole: "ADMIN", resource: "category", newValues: { name: parsed.data.name, slug } });
   await invalidateCache("cache:categories");
   revalidateTag("admin-categories", "max");
 }
@@ -214,6 +229,7 @@ export async function deleteCategory(id: string) {
   if (!parsed.success) return;
 
   await prisma.category.delete({ where: { id: parsed.data.id } });
+  await recordAuditEvent({ action: "SYSTEM", actorId: null, actorRole: "ADMIN", resource: "category", resourceId: parsed.data.id });
   await invalidateCache("cache:categories");
   revalidateTag("admin-categories", "max");
 }
@@ -233,6 +249,7 @@ export async function createCity(name: string) {
 
   const slug = parsed.data.name.toLowerCase().replace(/\s+/g, "-");
   await prisma.city.create({ data: { name: parsed.data.name, slug } });
+  await recordAuditEvent({ action: "SYSTEM", actorId: null, actorRole: "ADMIN", resource: "city", newValues: { name: parsed.data.name, slug } });
   await invalidateCache("cache:cities");
   revalidateTag("admin-cities", "max");
 }
@@ -244,6 +261,7 @@ export async function deleteCity(id: string) {
   if (!parsed.success) return;
 
   await prisma.city.delete({ where: { id: parsed.data.id } });
+  await recordAuditEvent({ action: "SYSTEM", actorId: null, actorRole: "ADMIN", resource: "city", resourceId: parsed.data.id });
   await invalidateCache("cache:cities");
   revalidateTag("admin-cities", "max");
 }

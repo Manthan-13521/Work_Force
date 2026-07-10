@@ -2,73 +2,75 @@
 
 import { useActionState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { breadcrumbSchema } from "@/lib/jsonld";
 import { Mail, Phone, MapPin, MessageSquare, Send } from "lucide-react";
 import { submitContact } from "@/actions/contact.actions";
-import { cn } from "@/lib/utils";
 
 export default function ContactPage() {
   const [state, action, pending] = useActionState(submitContact, undefined);
 
-  return (
-    <div className="container mx-auto px-4 py-16 max-w-3xl">
-      <h1 className="text-4xl font-bold mb-4">Contact Us</h1>
-      <p className="text-lg text-muted-foreground mb-12">
-        Have questions or feedback? We&apos;d love to hear from you.
-      </p>
+  const schemas = [
+    breadcrumbSchema([{ name: "Contact", url: "/contact" }]),
+  ];
 
-      <div className="grid md:grid-cols-2 gap-6 mb-12">
+  return (
+    <div className="px-5 lg:px-8 py-16 max-w-3xl mx-auto">
+      {schemas.map((s, i) => (
+        <script key={i} type="application/ld+json" dangerouslySetInnerHTML={{ __html: s }} />
+      ))}
+      <div className="mb-12">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-3">Contact Us</h1>
+        <p className="text-base text-muted-foreground leading-relaxed">
+          Have questions or feedback? We&apos;d love to hear from you.
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4 mb-10">
         {[
           { icon: MessageSquare, title: "WhatsApp", value: "+91 98765 43210" },
           { icon: Mail, title: "Email", value: "hello@workforce.in" },
           { icon: Phone, title: "Phone", value: "+91 98765 43210" },
           { icon: MapPin, title: "Office", value: "Hyderabad, Telangana" },
         ].map((item) => (
-          <Card key={item.title}>
+          <Card key={item.title} variant="ghost" className="border">
             <CardContent className="p-5 flex items-center gap-4">
-              <item.icon className="h-8 w-8 text-primary flex-shrink-0" aria-hidden="true" />
+              <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-primary/[0.06] text-primary shrink-0">
+                <item.icon className="h-5 w-5" strokeWidth={1.5} />
+              </div>
               <div>
                 <p className="text-sm text-muted-foreground">{item.title}</p>
-                <p className="font-medium">{item.value}</p>
+                <p className="font-medium text-sm">{item.value}</p>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <Card>
+      <Card variant="ghost" className="border">
         <CardContent className="p-6">
-          <h2 className="text-xl font-semibold mb-4">Send us a message</h2>
+          <h2 className="text-base font-semibold mb-4">Send us a message</h2>
           <form action={action} className="space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="name" className="text-sm font-medium mb-1 block">Name</label>
-                <input id="name" name="name" type="text" required maxLength={100} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm" />
-              </div>
-              <div>
-                <label htmlFor="email" className="text-sm font-medium mb-1 block">Email</label>
-                <input id="email" name="email" type="email" required className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm" />
-              </div>
+              <Input id="name" name="name" label="Name" required maxLength={100} placeholder="Your name" />
+              <Input id="email" name="email" label="Email" type="email" required placeholder="your@email.com" />
             </div>
-            <div>
-              <label htmlFor="message" className="text-sm font-medium mb-1 block">Message</label>
-              <textarea id="message" name="message" required maxLength={2000} className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm" />
+            <div className="space-y-1.5">
+              <label htmlFor="message" className="text-sm font-medium text-foreground/90 block">Message</label>
+              <Textarea id="message" name="message" required maxLength={2000} placeholder="How can we help you?" rows={4} />
             </div>
             {state?.error && (
               <p className="text-sm text-destructive" role="alert">{state.error}</p>
             )}
             {state?.success && (
-              <p className="text-sm text-emerald-600" role="alert">Message sent! We&apos;ll get back to you soon.</p>
+              <p className="text-sm text-success" role="alert">Message sent! We&apos;ll get back to you soon.</p>
             )}
-            <button
-              type="submit"
-              disabled={pending}
-              className={cn(
-                "inline-flex items-center gap-2 justify-center rounded-md bg-primary text-primary-foreground h-10 px-4 py-2 text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none transition-colors"
-              )}
-            >
-              <Send className="h-4 w-4" aria-hidden="true" />
+            <Button type="submit" disabled={pending} className="gap-2">
+              <Send className="h-4 w-4" />
               {pending ? "Sending..." : "Send Message"}
-            </button>
+            </Button>
           </form>
         </CardContent>
       </Card>

@@ -87,3 +87,8 @@ export type ContactMessage = Prisma.ContactMessageModel
  * 
  */
 export type City = Prisma.CityModel
+/**
+ * Model AuditLog
+ * 
+ */
+export type AuditLog = Prisma.AuditLogModel

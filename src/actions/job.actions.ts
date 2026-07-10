@@ -10,6 +10,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { buildPaginatedResponse, PAGE_SIZE } from "@/lib/pagination";
 import { updateJobStatusSchema } from "@/lib/schemas";
 import { backgroundTasks } from "@/lib/background";
+import { recordAuditEvent } from "@/lib/audit";
 const postJobSchema = z.object({
   title: z.string().min(3),
   description: z.string().optional(),
@@ -79,6 +80,7 @@ export async function postJob(formData: FormData) {
   }
 
   revalidateTag("jobs", "max");
+  await recordAuditEvent({ action: "JOB_CREATED", actorId: user.id, actorRole: user.role, resource: "job", newValues: { title: parsed.data.title, category: parsed.data.category, city: parsed.data.city } });
   redirect(`/employer/jobs`);
 }
 
@@ -101,6 +103,7 @@ export async function updateJobStatus(jobId: string, status: JobStatus) {
     ? { id: parsed.data.jobId }
     : { id: parsed.data.jobId, employerId: user.id };
   await prisma.job.update({ where, data: { status: newStatus } });
+  await recordAuditEvent({ action: "JOB_UPDATED", actorId: user.id, actorRole: user.role, resource: "job", resourceId: parsed.data.jobId, newValues: { status: newStatus } });
   revalidateTag("jobs", "max");
 }
 
@@ -160,7 +163,7 @@ export async function getJobs(
 
 export async function getJobById(jobId: string) {
   await backgroundTasks.markExpiredJobs();
-  return prisma.job.findUnique({
+  const job = await prisma.job.findUnique({
     where: { id: jobId },
     select: {
       id: true,
@@ -173,6 +176,7 @@ export async function getJobById(jobId: string) {
       city: true,
       vacancies: true,
       shiftType: true,
+      jobType: true,
       description: true,
       createdAt: true,
       expiresAt: true,
@@ -185,6 +189,18 @@ export async function getJobById(jobId: string) {
       },
     },
   });
+
+  if (!job) return null;
+
+  // Enforce visibility rules
+  let user;
+  try { user = await requireAuth(); } catch {}
+
+  if (user?.role === "ADMIN") return job;
+  if (user?.id === job.employerId) return job;
+  if (job.status !== "ACTIVE") return null;
+
+  return job;
 }
 
 export async function getEmployerJobs(pagination?: { cursor?: string; limit?: number }) {

@@ -10,6 +10,7 @@ vi.mock("./redis", () => ({
   redisGet: vi.fn(),
   redisDel: vi.fn(),
   checkRateLimit: vi.fn().mockResolvedValue(true),
+  atomicReadDelete: vi.fn(),
 }));
 vi.mock("./logger", () => ({
   logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() },

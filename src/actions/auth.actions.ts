@@ -5,6 +5,7 @@ import { signToken, setAuthCookie, removeAuthCookie, storeOTP, verifyOTP, sendOT
 import { generateOTP } from "@/lib/utils";
 import { redirect } from "next/navigation";
 import { requestOtpSchema, verifyOtpSchema, completeWorkerSchema, completeEmployerSchema } from "@/lib/schemas";
+import { recordAuditEvent } from "@/lib/audit";
 
 export async function requestOTP(phone: string) {
   const parsed = requestOtpSchema.safeParse({ phone });
@@ -16,6 +17,7 @@ export async function requestOTP(phone: string) {
   const otp = generateOTP();
   await storeOTP(parsed.data.phone, otp);
   await sendOTP(parsed.data.phone, otp);
+  await recordAuditEvent({ action: "OTP_SENT", actorId: null, actorRole: null, resource: "phone", resourceId: parsed.data.phone });
   return { success: true };
 }
 
@@ -46,6 +48,8 @@ export async function verifyLoginOTP(phone: string, otp: string) {
 
   const token = signToken({ userId: user.id, phone: user.phone, role: user.role });
   await setAuthCookie(token);
+
+  await recordAuditEvent({ action: "LOGIN", actorId: user.id, actorRole: user.role, resource: "user", resourceId: user.id });
 
   return { success: true, role: user.role, userId: user.id };
 }
@@ -90,6 +94,8 @@ export async function completeWorkerProfile(data: {
       languages: parsed.data.languages,
     },
   });
+
+  await recordAuditEvent({ action: "REGISTER", actorId: data.userId, actorRole: "WORKER", resource: "worker_profile", resourceId: data.userId, metadata: { trade: parsed.data.trade } });
 
   redirect("/worker/dashboard");
 }
@@ -155,10 +161,17 @@ export async function completeEmployerProfile(data: {
     }
   }
 
+  await recordAuditEvent({ action: "REGISTER", actorId: data.userId, actorRole: "EMPLOYER", resource: "employer_profile", resourceId: data.userId, metadata: { companyName: parsed.data.companyName, industry: parsed.data.industry } });
+
   redirect("/employer/dashboard");
 }
 
 export async function logout() {
+  let user;
+  try { user = await requireAuth(); } catch {}
+  if (user) {
+    await recordAuditEvent({ action: "LOGOUT", actorId: user.id, actorRole: user.role, resource: "user", resourceId: user.id });
+  }
   await removeAuthCookie();
   redirect("/");
 }

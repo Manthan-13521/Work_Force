@@ -5,9 +5,13 @@ import { requireAuth } from "@/lib/auth";
 import { env } from "@/env";
 import Razorpay from "razorpay";
 import crypto from "crypto";
+import { constantTimeEqual } from "@/lib/utils";
 import { buildPaginatedResponse, PAGE_SIZE } from "@/lib/pagination";
 import { createRazorpayOrderSchema } from "@/lib/schemas";
 import { cached, cacheKey } from "@/lib/cache";
+import { recordAuditEvent } from "@/lib/audit";
+import { retry } from "@/lib/retry";
+import { withTimeout } from "@/lib/timeout";
 
 export async function createRazorpayOrder(planId: string): Promise<
   | { error: string }
@@ -27,27 +31,51 @@ export async function createRazorpayOrder(planId: string): Promise<
 
     if (!env.RAZORPAY_KEY_SECRET) return { error: "Payment not configured" };
 
+    const existingPayment = await prisma.payment.findFirst({
+      where: { userId: user.id, planId: plan.id, status: "PENDING" },
+      select: { razorpayOrderId: true },
+    });
+    if (existingPayment?.razorpayOrderId) {
+      return {
+        orderId: existingPayment.razorpayOrderId,
+        amount: plan.price * 100,
+        currency: "INR",
+        key: env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
+      };
+    }
+
     const razorpay = new Razorpay({
       key_id: env.RAZORPAY_KEY_ID || "",
       key_secret: env.RAZORPAY_KEY_SECRET,
     });
 
-    const order = await razorpay.orders.create({
-      amount: plan.price * 100,
-      currency: "INR",
-      receipt: `plan_${user.id}_${Date.now()}`,
-    });
+    const order = await retry(() =>
+      withTimeout(
+        razorpay.orders.create({
+          amount: plan.price * 100,
+          currency: "INR",
+          receipt: `plan_${user.id}_${plan.id}_${Date.now()}`,
+        }),
+        10000,
+      ),
+    );
 
-    await prisma.payment.create({
-      data: {
-        userId: user.id,
-        planId: plan.id,
-        amount: plan.price,
-        status: "PENDING",
-        razorpayOrderId: order.id,
-        purpose: plan.isFeatured ? "FEATURED_JOB" : "PLAN_PURCHASE",
-      },
-    });
+    try {
+      await prisma.payment.create({
+        data: {
+          userId: user.id,
+          planId: plan.id,
+          amount: plan.price,
+          status: "PENDING",
+          razorpayOrderId: order.id,
+          purpose: plan.isFeatured ? "FEATURED_JOB" : "PLAN_PURCHASE",
+        },
+      });
+    } catch {
+      throw new Error("Failed to create payment record");
+    }
+
+    await recordAuditEvent({ action: "PAYMENT_INITIATED", actorId: user.id, actorRole: "EMPLOYER", resource: "payment", metadata: { planId: plan.id, amount: plan.price, razorpayOrderId: order.id } });
 
     return {
       orderId: order.id,
@@ -76,7 +104,7 @@ export async function verifyPayment(
       .update(body)
       .digest("hex");
 
-    if (expectedSignature !== razorpaySignature) {
+    if (!constantTimeEqual(expectedSignature, razorpaySignature)) {
       return { error: "Payment verification failed" };
     }
 
@@ -95,31 +123,47 @@ export async function verifyPayment(
     });
 
     if (!payment || !payment.plan) return { error: "Payment not found" };
+    const plan = payment.plan;
 
-    // Use updateMany with status filter inside transaction to prevent race
-    const [updated] = await prisma.$transaction([
-      prisma.payment.updateMany({
+    const updatedCount = await prisma.$transaction(async (tx) => {
+      const result = await tx.payment.updateMany({
         where: { id: payment.id, status: "PENDING" },
         data: { status: "SUCCESS", razorpayPaymentId },
-      }),
-      prisma.jobCredit.upsert({
+      });
+      if (result.count === 0) return 0;
+
+      // Extend expiry from current credits (don't reduce validity on renewal)
+      const currentCredit = await tx.jobCredit.findUnique({
+        where: { employerId: user.id },
+        select: { expiryDate: true },
+      });
+      const newExpiry = new Date(Date.now() + plan.durationDays * 86400000);
+      const finalExpiry =
+        currentCredit?.expiryDate && currentCredit.expiryDate > newExpiry
+          ? currentCredit.expiryDate
+          : newExpiry;
+
+      await tx.jobCredit.upsert({
         where: { employerId: user.id },
         create: {
           employerId: user.id,
-          remaining: payment.plan.jobPostLimit,
-          expiryDate: new Date(Date.now() + payment.plan.durationDays * 86400000),
+          remaining: plan.jobPostLimit,
+          expiryDate: finalExpiry,
         },
         update: {
-          remaining: { increment: payment.plan.jobPostLimit },
-          expiryDate: new Date(Date.now() + payment.plan.durationDays * 86400000),
+          remaining: { increment: plan.jobPostLimit },
+          expiryDate: finalExpiry,
         },
-      }),
-    ]);
+      });
+      return 1;
+    });
 
-    if (updated.count === 0) {
+    if (updatedCount === 0) {
+      await recordAuditEvent({ action: "PAYMENT_COMPLETED", actorId: user.id, actorRole: "EMPLOYER", resource: "payment", resourceId: payment.id, metadata: { razorpayOrderId: razorpayOrderId, razorpayPaymentId: razorpayPaymentId, plan: plan.jobPostLimit + " credits" } });
       return { success: true };
     }
 
+    await recordAuditEvent({ action: "PAYMENT_COMPLETED", actorId: user.id, actorRole: "EMPLOYER", resource: "payment", resourceId: payment.id, metadata: { razorpayOrderId: razorpayOrderId, razorpayPaymentId: razorpayPaymentId, plan: plan.jobPostLimit + " credits" } });
     return { success: true };
   } catch {
     return { error: "Payment verification failed. Please contact support." };
