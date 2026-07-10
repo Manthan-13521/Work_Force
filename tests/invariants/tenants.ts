@@ -7,7 +7,7 @@
  * - Admin bypass is constrained to read operations where intended
  */
 
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@/generated/prisma/client";
 
 export async function assertTenantCannotReadAnother(
   prisma: PrismaClient,

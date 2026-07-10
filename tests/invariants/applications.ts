@@ -7,7 +7,7 @@
  * - No orphan applications
  */
 
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@/generated/prisma/client";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   APPLIED: ["SHORTLISTED", "REJECTED"],

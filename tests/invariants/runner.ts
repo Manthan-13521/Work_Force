@@ -14,7 +14,7 @@
  *   Each function should accept (prisma, options?) and return Promise<InvariantResult>.
  */
 
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@/generated/prisma/client";
 import * as payment from "./payment";
 import * as credits from "./credits";
 import * as auth from "./auth";

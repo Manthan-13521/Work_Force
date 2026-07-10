@@ -7,7 +7,7 @@
  * - expiry dates never shorten on renewals
  */
 
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "@/generated/prisma/client";
 
 export async function assertGrantedMinusConsumedEqualsRemaining(
   prisma: PrismaClient,

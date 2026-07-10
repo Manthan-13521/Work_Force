@@ -7,7 +7,8 @@
  * - Application counts are consistent with the actual application table
  */
 
-import type { PrismaClient, JobStatus } from "@prisma/client";
+import type { PrismaClient } from "@/generated/prisma/client";
+import type { JobStatus } from "@/generated/prisma/enums";
 
 const PUBLIC_VISIBLE: JobStatus[] = ["ACTIVE"];
 const PRIVATE_STATUSES: JobStatus[] = ["CLOSED", "EXPIRED", "SUSPENDED"];

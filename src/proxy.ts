@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken } from "@/lib/jwt";
 import { env } from "@/env";
 import { generateRequestId, setRequestContext, clearRequestContext } from "@/lib/tracer";
 import { logger } from "@/lib/logger";
