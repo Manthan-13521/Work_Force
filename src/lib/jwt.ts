@@ -1,7 +1,9 @@
 import jwt from "jsonwebtoken";
 import { env } from "@/env";
 
-const JWT_SECRET = env.JWT_SECRET;
+function getJwtSecret(): string {
+  return env.JWT_SECRET;
+}
 
 export type JWTPayload = {
   userId: string;
@@ -10,7 +12,7 @@ export type JWTPayload = {
 };
 
 export function signToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: "7d" });
 }
 
 function isJWTPayload(payload: unknown): payload is JWTPayload {
@@ -25,7 +27,7 @@ function isJWTPayload(payload: unknown): payload is JWTPayload {
 
 export function verifyToken(token: string): JWTPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     if (!isJWTPayload(decoded)) return null;
     return decoded;
   } catch {
