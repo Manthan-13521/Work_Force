@@ -65,8 +65,8 @@ function validateEnv(): Env {
     for (const issue of result.error.issues) {
       console.error(`  - ${issue.path.join(".")}: ${issue.message}`);
     }
-    if (!process.env.NEXT_PHASE && process.env.NODE_ENV === "production") {
-      throw new Error("Invalid environment variables. Check server logs.");
+    if (process.env.NODE_ENV === "production" && !process.env.NEXT_PHASE) {
+      console.error("FATAL: Invalid environment variables — individual features will fail with specific errors.");
     }
     console.warn("⚠ Running with missing or invalid env vars");
     cached = process.env as unknown as Env;
