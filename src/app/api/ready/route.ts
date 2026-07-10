@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import { env } from "@/env";
 
+export const runtime = "nodejs";
+
 export async function GET() {
   const checks: Record<string, boolean | string> = {};
 

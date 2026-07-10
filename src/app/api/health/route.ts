@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { env } from "@/env";
 import { redis } from "@/lib/redis";
 
+export const runtime = "nodejs";
+
 type HealthStatus = "healthy" | "degraded" | "unhealthy";
 
 type ComponentCheck = {

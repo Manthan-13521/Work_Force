@@ -5,7 +5,6 @@ const vitalsBuffer: Array<Record<string, unknown>> = [];
 const MAX_BUFFER = 100;
 
 export const dynamic = "force-dynamic";
-export const runtime = "edge";
 
 export async function POST(request: NextRequest) {
   try {

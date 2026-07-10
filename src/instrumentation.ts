@@ -12,11 +12,14 @@ export async function register() {
   });
 
   // Warm up database connection pool to avoid cold-start latency on first request
-  try {
-    const { prisma } = await import("@/lib/prisma");
-    await prisma.$queryRaw`SELECT 1`;
-    logger.info("Database connection pool warmed");
-  } catch (e) {
-    logger.error("Database warmup failed", { error: String(e) });
+  // Only runs on Node.js runtime; Edge Runtime does not support Prisma
+  if (process.env.NEXT_RUNTIME !== "edge") {
+    try {
+      const { prisma } = await import("@/lib/prisma");
+      await prisma.$queryRaw`SELECT 1`;
+      logger.info("Database connection pool warmed");
+    } catch (e) {
+      logger.error("Database warmup failed", { error: String(e) });
+    }
   }
 }
