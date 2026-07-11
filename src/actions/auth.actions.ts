@@ -83,7 +83,10 @@ export async function completeWorkerProfile(data: {
   languages: string[];
 }) {
   const parsed = completeWorkerSchema.safeParse(data);
-  if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+  if (!parsed.success) {
+    const messages = Object.entries(parsed.error.flatten().fieldErrors).flatMap(([field, errors]) => errors.map((e) => `${field}: ${e}`));
+    return { error: messages.join("; ") };
+  }
 
   try {
     const currentUser = await requireAuth();
@@ -129,7 +132,10 @@ export async function completeEmployerProfile(data: {
   city: string;
 }) {
   const parsed = completeEmployerSchema.safeParse(data);
-  if (!parsed.success) return { error: parsed.error.flatten().fieldErrors };
+  if (!parsed.success) {
+    const messages = Object.entries(parsed.error.flatten().fieldErrors).flatMap(([field, errors]) => errors.map((e) => `${field}: ${e}`));
+    return { error: messages.join("; ") };
+  }
 
   try {
     const currentUser = await requireAuth();
