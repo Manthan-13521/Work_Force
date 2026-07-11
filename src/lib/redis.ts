@@ -83,8 +83,8 @@ const memoryLocks = new Map<string, Promise<boolean>>();
 export async function atomicReadDelete(key: string): Promise<string | null> {
   if (redis) {
     try {
-      const result = await redis.set(key, "", { xx: true, get: true });
-      if (result === null || result === "") return null;
+      const result = await redis.getdel<string>(key);
+      if (result === null) return null;
       return result;
     } catch {
       logRedisFallback("atomicReadDelete");
