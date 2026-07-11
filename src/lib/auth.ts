@@ -84,33 +84,46 @@ export async function requireAuth(roles?: string[]) {
   return user;
 }
 
-const DEV_OTP_MAP_KEY = "__workforce_dev_otp";
-function getDevOTPStore(): Map<string, { value: string; expiresAt: number }> {
-  if (!(globalThis as any)[DEV_OTP_MAP_KEY]) {
-    (globalThis as any)[DEV_OTP_MAP_KEY] = new Map();
-  }
-  return (globalThis as any)[DEV_OTP_MAP_KEY];
+function getGlobalDevOTPStore(): Map<string, { value: string; expiresAt: number }> {
+  const key = "__workforce_dev_otp";
+  if (!(globalThis as any)[key]) (globalThis as any)[key] = new Map();
+  return (globalThis as any)[key];
 }
 
 export async function storeOTP(email: string, otp: string) {
+  const lowerEmail = email.toLowerCase();
   if (process.env.NODE_ENV === "development") {
-    getDevOTPStore().set(email, { value: otp, expiresAt: Date.now() + OTP_EXPIRY_SECONDS * 1000 });
+    const store = getGlobalDevOTPStore();
+    console.error("[OTP_STORE]", { lowerEmail, otp, storeSize: store.size, globalThisHasKey: (globalThis as any).__workforce_dev_otp !== undefined });
+    store.set(lowerEmail, { value: otp, expiresAt: Date.now() + OTP_EXPIRY_SECONDS * 1000 });
     return;
   }
-  await redisSet(`otp:${email}`, otp, OTP_EXPIRY_SECONDS);
+  await redisSet(`otp:${lowerEmail}`, otp, OTP_EXPIRY_SECONDS);
 }
 
 export async function verifyOTP(email: string, otp: string): Promise<boolean> {
+  const lowerEmail = email.toLowerCase();
   if (process.env.NODE_ENV === "development") {
-    const store = getDevOTPStore();
-    const record = store.get(email);
-    if (!record) return false;
-    store.delete(email);
-    if (Date.now() > record.expiresAt) return false;
-    if (!constantTimeEqual(record.value, otp)) return false;
+    const store = getGlobalDevOTPStore();
+    console.error("[OTP_VERIFY]", { lowerEmail, otp, storeSize: store.size, hasKey: store.has(lowerEmail) });
+    const record = store.get(lowerEmail);
+    if (!record) {
+      console.error("[OTP_VERIFY] record not found");
+      return false;
+    }
+    store.delete(lowerEmail);
+    if (Date.now() > record.expiresAt) {
+      console.error("[OTP_VERIFY] expired", { expiresAt: record.expiresAt, now: Date.now() });
+      return false;
+    }
+    if (!constantTimeEqual(record.value, otp)) {
+      console.error("[OTP_VERIFY] mismatch", { stored: record.value, provided: otp });
+      return false;
+    }
+    console.error("[OTP_VERIFY] SUCCESS");
     return true;
   }
-  const stored = await atomicReadDelete(`otp:${email}`);
+  const stored = await atomicReadDelete(`otp:${lowerEmail}`);
   if (!stored) return false;
   if (!constantTimeEqual(stored, otp)) return false;
   return true;
