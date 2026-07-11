@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const emailSchema = z.string().email("Invalid email address");
+export const emailSchema = z.string().email("Invalid email address").transform((e) => e.trim().toLowerCase());
 
 export const otpSchema = z.string().regex(/^\d{6}$/, "OTP must be 6 digits");
 
