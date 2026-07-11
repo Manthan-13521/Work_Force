@@ -1,7 +1,6 @@
 "use client";
 
 import Script from "next/script";
-import { env } from "@/env";
 
 declare global {
   interface Window {
@@ -11,7 +10,7 @@ declare global {
 }
 
 export function ClarityProvider() {
-  const clarityId = env.NEXT_PUBLIC_CLARITY_ID;
+  const clarityId = process.env.NEXT_PUBLIC_CLARITY_ID;
   if (!clarityId) return null;
 
   return (
