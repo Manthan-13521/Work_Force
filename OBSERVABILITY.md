@@ -24,7 +24,7 @@ Server Action → action-wrapper.ts
                 └─ Captures metrics
 
 External Service → circuit-breaker.ts + timeout.ts
-                   ├─ Wraps Resend, Cloudinary calls
+                   ├─ Wraps SMTP, Cloudinary calls
                    ├─ Records latency metrics
                    └─ Falls back gracefully on failure
 
@@ -73,7 +73,7 @@ Metrics → observability.ts
 | Metric | Source | Format |
 |--------|--------|--------|
 | Prisma query latencies | `prisma.ts` middleware | `prisma:{model}.{action}` |
-| Resend email timing | `email/provider.ts` | `resend.email.send` |
+| SMTP email timing | `email/provider.ts` | `smtp.email.send` |
 | Cloudinary upload timing | `upload.actions.ts` circuit breaker | `cloudinary.upload` |
 | Server action timing | `action-wrapper.ts` | `action:{name}` |
 | Database latency | `/api/health` | Reported in health check |

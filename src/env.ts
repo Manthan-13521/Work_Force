@@ -13,9 +13,13 @@ const envSchema = z.object({
   // Auth (always required)
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
 
-  // Email (OTP delivery via Resend)
-  RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().email("EMAIL_FROM must be a valid email").optional(),
+  // Email (OTP delivery via SMTP)
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().optional(),
+  SMTP_SECURE: booleanEnv.default("true"),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
   EMAIL_REPLY_TO: z.string().email("EMAIL_REPLY_TO must be a valid email").optional(),
 
   // Media

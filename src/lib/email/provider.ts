@@ -1,17 +1,35 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
 import { env } from "@/env";
 import { logger } from "@/lib/logger";
 import { retry } from "@/lib/retry";
-import { withTimeout } from "@/lib/timeout";
 
-let client: Resend | null = null;
+let transporter: Transporter | null = null;
 
-function getClient(): Resend | null {
-  if (client) return client;
-  if (env.RESEND_API_KEY) {
-    client = new Resend(env.RESEND_API_KEY);
+function getTransporter(): Transporter | null {
+  if (transporter) return transporter;
+
+  const { SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS } = env;
+  if (!SMTP_HOST || !SMTP_PORT) {
+    logger.warn("SMTP not configured — email not sent");
+    return null;
   }
-  return client;
+
+  transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_SECURE,
+    auth: SMTP_USER && SMTP_PASS ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
+    pool: true,
+    maxConnections: 5,
+    rateDelta: 1000,
+    rateLimit: 10,
+    socketTimeout: 10000,
+    connectionTimeout: 10000,
+    greetingTimeout: 5000,
+  });
+
+  return transporter;
 }
 
 export async function sendEmail({
@@ -25,32 +43,30 @@ export async function sendEmail({
   html: string;
   text?: string;
 }): Promise<boolean> {
-  const resend = getClient();
-  if (!resend) {
-    logger.warn("Resend not configured — email not sent", { to });
-    return false;
-  }
+  const transport = getTransporter();
+  if (!transport) return false;
 
-  const from = env.EMAIL_FROM || "noreply@workforce.app";
+  const from = env.EMAIL_FROM || "noreply@localhost";
 
   try {
-    await retry(() =>
-      withTimeout(
-        resend.emails.send({
+    await retry(
+      () =>
+        transport.sendMail({
           from,
-          to: [to],
+          to,
           subject,
           html,
           text: text || html.replace(/<[^>]*>/g, ""),
           replyTo: env.EMAIL_REPLY_TO || undefined,
         }),
-        10000,
-        "Resend sendEmail"
-      )
+      { maxAttempts: 2, delayMs: 500 }
     );
     return true;
   } catch (error) {
-    logger.error("Resend send failed", { to, error: String(error) });
+    logger.error("SMTP send failed", {
+      to,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return false;
   }
 }

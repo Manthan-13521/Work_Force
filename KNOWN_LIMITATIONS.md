@@ -24,7 +24,7 @@
 
 | Limitation | Impact | When to Address |
 |------------|--------|----------------|
-| Resend email delivery failure | Email OTP delivery fails silently | Already handled — OTP still stored in Redis, user sees error |
+| SMTP email delivery failure | Email OTP delivery fails silently | Already handled — OTP still stored in Redis, user sees error |
 | Cloudinary circuit breaker + local fallback | Uploads use local filesystem (lost on redeploy) | Acceptable for MVP — Cloudinary is primary |
 | No database transaction retry for Prisma | Rare deadlock could cause 500 error | Add Prisma retry wrapper if deadlocks appear |
 | No chaos testing done | Unknown behavior under extreme failure | Before enterprise SLA |

@@ -16,7 +16,7 @@
 ### Environment Variables (Vercel)
 - [ ] `DATABASE_URL` — confirmed Neon connection string
 - [ ] `JWT_SECRET` — rotated from dev, ≥32 chars
-- [ ] `RESEND_API_KEY` — from Resend dashboard
+- [ ] `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` — from email provider
 - [ ] `EMAIL_FROM` — verified sender domain
 - [ ] `CLOUDINARY_CLOUD_NAME` — from Cloudinary
 - [ ] `CLOUDINARY_API_KEY` — from Cloudinary
@@ -37,7 +37,7 @@
 - [ ] Neon: `npx tsx prisma/seed.ts` succeeds
 - [ ] Upstash Redis: `redis-cli -u $UPSTASH_URL ping` returns PONG
 - [ ] Cloudinary: upload a test image via API
-- [ ] Resend: send a test email OTP
+- [ ] SMTP: send a test email OTP
 - [ ] Razorpay: create a test payment link
 - [ ] Sentry: `Sentry.captureMessage("test")` appears in dashboard
 - [ ] Vercel: `vercel logs` shows no startup errors
@@ -260,7 +260,7 @@ If during or after launch any of these occur:
 | Error rate | < 1% | Monitor |
 | P95 latency | < 2s | Optimize or scale |
 | Payment success | > 98% | Investigate if lower |
-| OTP delivery | > 95% | Check Resend |
+| OTP delivery | > 95% | Check SMTP |
 | DB connections | < 80% pool | Scale Neon |
 | Memory | < 80% | Investigate leak |
 | Active users | Per baseline | Scale as needed |

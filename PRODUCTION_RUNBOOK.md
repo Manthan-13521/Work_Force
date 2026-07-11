@@ -14,7 +14,7 @@
 | Upstash | https://console.upstash.com | Email/password |
 | Sentry | https://sentry.io | Email/password |
 | Razorpay | https://dashboard.razorpay.com | Email/password |
-| Resend | https://resend.com | Email/password |
+| SMTP Provider | Provider dashboard | Email/password |
 | Cloudinary | https://console.cloudinary.com | Email/password |
 | Status page | https://status.workforce.app | PagerDuty OAuth |
 
@@ -95,10 +95,10 @@ curl -s -X GET "$UPSTASH_REDIS_REST_URL/ping" \
 | Error Pattern | Likely Cause | Action |
 |--------------|-------------|--------|
 | `PrismaClientKnownRequestError` | DB schema mismatch | Run `prisma db push` |
-| `Resend delivery failure` | Resend API down | Check Resend status, wait |
+| `SMTP delivery failure` | SMTP API down | Check SMTP status, wait |
 | `Cloudinary.*403` | API key rotated | Update env var, redeploy |
 | `Razorpay.*authentication` | Key mismatch | Check RAZORPAY_KEY_SECRET |
-| `fetch failed` | Upstream DNS | Check Cloudinary/Resend |
+| `fetch failed` | Upstream DNS | Check Cloudinary/SMTP |
 | `JWT expired` | Clock skew | Check server time |
 | `TypeError: Cannot read` | API contract mismatch | Check response shape |
 
@@ -152,20 +152,20 @@ curl -s -X GET "$UPSTASH_REDIS_REST_URL/ping" \
 ### Detection
 - Sentry alert: OTP failure rate > 5%
 - User reports "OTP not received"
-- Resend API error rate elevated
+- SMTP API error rate elevated
 
 ### Triage (5 minutes)
-1. Check Resend dashboard:
+1. Check SMTP dashboard:
    - Credits remaining
    - Delivery reports for recent emails
    - Sender domain verification status
-2. Check Sentry: `resend.email.send` errors
+2. Check Sentry: `smtp.email.send` errors (or check Sentry for SMTP failures)
 3. Check email provider logs for bounce/reject
 
 ### Resolution
-1. Out of credits → recharge Resend wallet
-2. API key rotated → update env var, redeploy
-3. Sender domain not verified → verify in Resend dashboard
+1. SMTP credentials invalid → check SMTP_USER/SMTP_PASS
+2. SMTP host unreachable → verify SMTP_HOST/SMTP_PORT
+3. Sender domain rejected → verify in email provider dashboard
 4. Email rejected → check content/template validity
 
 ---
@@ -247,7 +247,7 @@ SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = 'idle' AND 
 ### Immediate Actions (first 5 minutes)
 1. **Do NOT** disclose publicly yet
 2. Lock down: Vercel → Firewall → enable IP restriction or maintenance mode
-3. Rotate all secrets: JWT_SECRET, RAZORPAY_KEY_SECRET, RESEND_API_KEY, Cloudinary keys
+3. Rotate all secrets: JWT_SECRET, RAZORPAY_KEY_SECRET, SMTP_PASS, Cloudinary keys
 4. Invalidate all sessions:
    ```sql
    UPDATE session SET expires_at = NOW() WHERE expires_at > NOW();
