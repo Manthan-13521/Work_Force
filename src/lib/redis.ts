@@ -52,7 +52,9 @@ export async function redisSet(key: string, value: string, ttlSeconds: number): 
 export async function redisGet(key: string): Promise<string | null> {
   if (redis) {
     try {
-      return await redis.get<string>(key);
+      const result = await redis.get<string>(key);
+      if (result === null) return null;
+      return String(result);
     } catch {
       logRedisFallback("get");
     }
@@ -85,7 +87,7 @@ export async function atomicReadDelete(key: string): Promise<string | null> {
     try {
       const result = await redis.getdel<string>(key);
       if (result === null) return null;
-      return result;
+      return String(result);
     } catch {
       logRedisFallback("atomicReadDelete");
     }
