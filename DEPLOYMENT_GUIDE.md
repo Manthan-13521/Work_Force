@@ -10,7 +10,7 @@
 ### Required (set in Vercel)
 | Variable | Example Value | Description |
 |----------|-------------|-------------|
-| `DATABASE_URL` | `postgresql://user:pass@ep-holy-mud.aws.neon.tech/workforce` | PostgreSQL connection string |
+| `DATABASE_URL` | `postgresql://user:pass@ep-holy-mud.aws.neon.tech/workforce?sslmode=verify-full` | PostgreSQL connection string |
 | `JWT_SECRET` | `your-32-char-min-secret` | Secret for JWT token signing |
 | `NEXT_PUBLIC_APP_URL` | `https://work-force1-ivory.vercel.app` | Public app URL (for CSRF + OG) |
 

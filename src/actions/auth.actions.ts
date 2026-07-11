@@ -20,6 +20,7 @@ export async function requestOTP(email: string) {
   await storeOTP(parsed.data.email, otp);
 
   if (env.NODE_ENV === "development") {
+    console.log(`[DEV OTP] ${parsed.data.email} → ${otp}`);
     return { success: true };
   }
 
