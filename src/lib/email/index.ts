@@ -1,2 +1,2 @@
 export { sendEmail } from "./provider";
-export { renderOtpEmail } from "./templates/otp";
+export { renderOtpEmail, renderOtpText } from "./templates/otp";

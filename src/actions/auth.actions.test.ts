@@ -45,6 +45,7 @@ vi.mock("@/lib/logger", () => ({
 vi.mock("@/lib/email", () => ({
   sendEmail: vi.fn().mockResolvedValue(true),
   renderOtpEmail: vi.fn().mockReturnValue("<html>OTP</html>"),
+  renderOtpText: vi.fn().mockReturnValue("OTP: 123456"),
 }));
 
 vi.mock("@/lib/audit", () => ({

@@ -6,7 +6,7 @@ import { generateOTP } from "@/lib/utils";
 import { redirect } from "next/navigation";
 import { requestOtpSchema, verifyOtpSchema, completeWorkerSchema, completeEmployerSchema } from "@/lib/schemas";
 import { recordAuditEvent } from "@/lib/audit";
-import { sendEmail, renderOtpEmail } from "@/lib/email";
+import { sendEmail, renderOtpEmail, renderOtpText } from "@/lib/email";
 
 export async function requestOTP(email: string) {
   const parsed = requestOtpSchema.safeParse({ email });
@@ -25,8 +25,9 @@ export async function requestOTP(email: string) {
 
   const sent = await sendEmail({
     to: parsed.data.email,
-    subject: "Your Workforce verification code",
+    subject: `Workforce verification code: ${otp}`,
     html: renderOtpEmail(otp, 10),
+    text: renderOtpText(otp, 10),
   });
   if (!sent) return { error: "Failed to send OTP. Please try again." };
 

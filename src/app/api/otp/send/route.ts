@@ -3,7 +3,7 @@ import { generateOTP } from "@/lib/utils";
 import { storeOTP, checkOTPRateLimit } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/redis";
 import { apiSuccess, apiError, apiServerError } from "@/lib/api-response";
-import { sendEmail, renderOtpEmail } from "@/lib/email";
+import { sendEmail, renderOtpEmail, renderOtpText } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,8 +29,9 @@ export async function POST(request: NextRequest) {
     if (process.env.NODE_ENV !== "development") {
       await sendEmail({
         to: email,
-        subject: "Your Workforce verification code",
+        subject: `Workforce verification code: ${otp}`,
         html: renderOtpEmail(otp, 10),
+        text: renderOtpText(otp, 10),
       });
     }
 
