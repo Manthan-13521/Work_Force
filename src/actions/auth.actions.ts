@@ -7,7 +7,6 @@ import { redirect } from "next/navigation";
 import { requestOtpSchema, verifyOtpSchema, completeWorkerSchema, completeEmployerSchema } from "@/lib/schemas";
 import { recordAuditEvent } from "@/lib/audit";
 import { sendEmail, renderOtpEmail } from "@/lib/email";
-import { env } from "@/env";
 
 export async function requestOTP(email: string) {
   const parsed = requestOtpSchema.safeParse({ email });
@@ -19,7 +18,7 @@ export async function requestOTP(email: string) {
   const otp = generateOTP();
   await storeOTP(parsed.data.email, otp);
 
-  if (env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === "development") {
     console.log(`[DEV OTP] ${parsed.data.email} → ${otp}`);
     return { success: true };
   }

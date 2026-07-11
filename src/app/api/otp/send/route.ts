@@ -4,7 +4,6 @@ import { storeOTP, checkOTPRateLimit } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/redis";
 import { apiSuccess, apiError, apiServerError } from "@/lib/api-response";
 import { sendEmail, renderOtpEmail } from "@/lib/email";
-import { env } from "@/env";
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +26,7 @@ export async function POST(request: NextRequest) {
     const otp = generateOTP();
     await storeOTP(email, otp);
 
-    if (env.NODE_ENV !== "development") {
+    if (process.env.NODE_ENV !== "development") {
       await sendEmail({
         to: email,
         subject: "Your Workforce verification code",
