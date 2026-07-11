@@ -84,11 +84,32 @@ export async function requireAuth(roles?: string[]) {
   return user;
 }
 
+const DEV_OTP_MAP_KEY = "__workforce_dev_otp";
+function getDevOTPStore(): Map<string, { value: string; expiresAt: number }> {
+  if (!(globalThis as any)[DEV_OTP_MAP_KEY]) {
+    (globalThis as any)[DEV_OTP_MAP_KEY] = new Map();
+  }
+  return (globalThis as any)[DEV_OTP_MAP_KEY];
+}
+
 export async function storeOTP(email: string, otp: string) {
+  if (process.env.NODE_ENV === "development") {
+    getDevOTPStore().set(email, { value: otp, expiresAt: Date.now() + OTP_EXPIRY_SECONDS * 1000 });
+    return;
+  }
   await redisSet(`otp:${email}`, otp, OTP_EXPIRY_SECONDS);
 }
 
 export async function verifyOTP(email: string, otp: string): Promise<boolean> {
+  if (process.env.NODE_ENV === "development") {
+    const store = getDevOTPStore();
+    const record = store.get(email);
+    if (!record) return false;
+    store.delete(email);
+    if (Date.now() > record.expiresAt) return false;
+    if (!constantTimeEqual(record.value, otp)) return false;
+    return true;
+  }
   const stored = await atomicReadDelete(`otp:${email}`);
   if (!stored) return false;
   if (!constantTimeEqual(stored, otp)) return false;
