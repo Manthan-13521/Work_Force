@@ -9,7 +9,7 @@
 - [ ] `NEXT_PUBLIC_RAZORPAY_KEY_ID` — same as KEY_ID
 - [ ] `CLOUDINARY_CLOUD_NAME` + `API_KEY` + `API_SECRET` — from Cloudinary
 - [ ] `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` — from Upstash
-- [ ] `MSG91_AUTH_KEY` + `SENDER_ID` + `TEMPLATE_ID` — from MSG91
+- [ ] `RESEND_API_KEY` + `EMAIL_FROM` — from Resend
 - [ ] `SENTRY_DSN` — from Sentry project
 - [ ] `NEXT_PUBLIC_APP_URL` — canonical production URL
 

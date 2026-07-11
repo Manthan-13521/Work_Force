@@ -24,7 +24,7 @@
 
 | Limitation | Impact | When to Address |
 |------------|--------|----------------|
-| MSG91 circuit breaker + retry | SMS delivery fails silently if MSG91 is down | Already handled — OTP still stored, user sees error |
+| Resend email delivery failure | Email OTP delivery fails silently | Already handled — OTP still stored in Redis, user sees error |
 | Cloudinary circuit breaker + local fallback | Uploads use local filesystem (lost on redeploy) | Acceptable for MVP — Cloudinary is primary |
 | No database transaction retry for Prisma | Rare deadlock could cause 500 error | Add Prisma retry wrapper if deadlocks appear |
 | No chaos testing done | Unknown behavior under extreme failure | Before enterprise SLA |

@@ -17,7 +17,7 @@
 ### Optional — Required for full functionality
 | Variable | Required For |
 |----------|-------------|
-| `MSG91_AUTH_KEY`, `MSG91_SENDER_ID`, `MSG91_TEMPLATE_ID` | SMS OTP delivery |
+| `RESEND_API_KEY`, `EMAIL_FROM` | Email OTP delivery |
 | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | Image/document uploads |
 | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID` | Payment processing |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Distributed rate limiting |
@@ -49,7 +49,7 @@ DATABASE_URL="postgresql://..." npx tsx prisma/seed.ts
 ## Production Readiness Checklist
 
 - [ ] `NEXT_PUBLIC_APP_URL` set correctly
-- [ ] MSG91 credentials configured (SMS OTP)
+- [ ] Resend credentials configured (email OTP)
 - [ ] Razorpay credentials configured (payments)
 - [ ] Cloudinary credentials configured (uploads)
 - [ ] Sentry DSN configured (error monitoring)

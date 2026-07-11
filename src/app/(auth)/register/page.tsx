@@ -7,19 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PhoneInput } from "@/components/shared/phone-input";
 import { requestOTP, verifyLoginOTP, completeWorkerProfile, completeEmployerProfile } from "@/actions/auth.actions";
 import { TRADES, INDUSTRIES, HYDERABAD_ZONES } from "@/lib/constants";
-import { Shield, ArrowLeft, Building, User } from "lucide-react";
+import { Shield, ArrowLeft, Building, User, Mail } from "lucide-react";
 
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedRole = searchParams.get("role") || "worker";
 
-  const [step, setStep] = useState<"role" | "phone" | "otp" | "profile">("role");
+  const [step, setStep] = useState<"role" | "email" | "otp" | "profile">("role");
   const [role, setRole] = useState<string>(preselectedRole);
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [userId, setUserId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,7 +38,7 @@ function RegisterForm() {
 
   const steps = [
     { key: "role", label: "Role", number: 1 },
-    { key: "phone", label: "Phone", number: 2 },
+    { key: "email", label: "Email", number: 2 },
     { key: "otp", label: "Verify", number: 3 },
     { key: "profile", label: "Profile", number: 4 },
   ];
@@ -48,10 +47,10 @@ function RegisterForm() {
 
   async function handleRequestOTP(e: React.FormEvent) {
     e.preventDefault();
-    if (phone.length !== 10) return setError("Enter a valid 10-digit phone number");
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError("Enter a valid email address");
     setLoading(true);
     setError("");
-    const result = await requestOTP(phone);
+    const result = await requestOTP(email);
     setLoading(false);
     if (result?.error) return setError(result.error);
     setStep("otp");
@@ -64,7 +63,7 @@ function RegisterForm() {
     if (code.length !== 6) return setError("Enter the complete 6-digit OTP");
     setLoading(true);
     setError("");
-    const result = await verifyLoginOTP(phone, code);
+    const result = await verifyLoginOTP(email, code);
     setLoading(false);
     if (result?.error) return setError(result.error);
     if (!result?.userId) return setError("Something went wrong");
@@ -140,7 +139,7 @@ function RegisterForm() {
         {step === "role" && (
           <div className="space-y-3">
             <button
-              onClick={() => { setRole("worker"); setStep("phone"); }}
+              onClick={() => { setRole("worker"); setStep("email"); }}
               className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                 role === "worker" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
               }`}
@@ -156,7 +155,7 @@ function RegisterForm() {
               </div>
             </button>
             <button
-              onClick={() => { setRole("employer"); setStep("phone"); }}
+              onClick={() => { setRole("employer"); setStep("email"); }}
               className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                 role === "employer" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
               }`}
@@ -174,9 +173,25 @@ function RegisterForm() {
           </div>
         )}
 
-        {step === "phone" && (
+        {step === "email" && (
           <form onSubmit={handleRequestOTP} className="space-y-4">
-            <PhoneInput id="register-phone" value={phone} onChange={setPhone} error={error} />
+            <div className="space-y-2">
+              <label htmlFor="register-email" className="text-sm font-medium">Email address</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="register-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="pl-9"
+                  autoComplete="email"
+                  autoFocus
+                />
+              </div>
+              {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+            </div>
             <Button type="submit" className="w-full" loading={loading}>Continue</Button>
             <button type="button" onClick={() => setStep("role")} className="w-full flex items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <ArrowLeft className="h-3.5 w-3.5" /> Back to role selection
@@ -188,7 +203,7 @@ function RegisterForm() {
           <form onSubmit={handleVerifyOTP} className="space-y-4">
             <div className="space-y-3">
               <label className="text-sm font-medium text-center block">Enter verification code</label>
-              <p className="text-xs text-muted-foreground text-center">Sent to +91 {phone}</p>
+              <p className="text-xs text-muted-foreground text-center">Sent to {email}</p>
               <div className="flex gap-2 justify-center pt-2">
                 {otp.map((digit, index) => (
                   <input key={index} ref={(el) => { otpRefs.current[index] = el; }} type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={1} value={digit}
@@ -200,9 +215,9 @@ function RegisterForm() {
             </div>
             {error && <p className="text-sm text-destructive text-center" role="alert">{error}</p>}
             <Button type="submit" className="w-full" loading={loading}>Verify</Button>
-            <button type="button" onClick={() => { setStep("phone"); setOtp(["", "", "", "", "", ""]); setError(""); }}
+            <button type="button" onClick={() => { setStep("email"); setOtp(["", "", "", "", "", ""]); setError(""); }}
               className="w-full flex items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-              <ArrowLeft className="h-3.5 w-3.5" /> Change phone number
+              <ArrowLeft className="h-3.5 w-3.5" /> Change email address
             </button>
           </form>
         )}

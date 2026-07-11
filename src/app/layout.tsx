@@ -22,7 +22,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://workforce.in"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://workforce.in"),
   title: {
     default: "Workforce — Verified Industrial Labour Hiring in Hyderabad",
     template: "%s | Workforce",

@@ -29,7 +29,6 @@ vi.mock("@/lib/auth", () => ({
   removeAuthCookie: vi.fn(),
   storeOTP: vi.fn(),
   verifyOTP: vi.fn(),
-  sendOTP: vi.fn(),
   checkOTPRateLimit: vi.fn(),
   checkVerifyRateLimit: vi.fn(),
   requireAuth: vi.fn(),
@@ -41,6 +40,15 @@ vi.mock("@/lib/utils", () => ({
 
 vi.mock("@/lib/logger", () => ({
   logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() },
+}));
+
+vi.mock("@/lib/email", () => ({
+  sendEmail: vi.fn().mockResolvedValue(true),
+  renderOtpEmail: vi.fn().mockReturnValue("<html>OTP</html>"),
+}));
+
+vi.mock("@/lib/audit", () => ({
+  recordAuditEvent: vi.fn(),
 }));
 
 const { redirect: redirectMock } = vi.hoisted(() => {
@@ -56,42 +64,41 @@ import * as auth from "@/lib/auth";
 import { requestOTP, verifyLoginOTP, completeWorkerProfile, completeEmployerProfile, logout } from "./auth.actions";
 
 describe("requestOTP", () => {
-  it("returns error for invalid phone number", async () => {
+  it("returns error for invalid email address", async () => {
     const result = await requestOTP("invalid");
-    expect(result).toEqual({ error: "Invalid phone number" });
+    expect(result).toEqual({ error: "Invalid email address" });
   });
 
   it("returns error when rate limited", async () => {
     vi.mocked(auth.checkOTPRateLimit).mockResolvedValueOnce(false);
-    const result = await requestOTP("9876543210");
+    const result = await requestOTP("user@example.com");
     expect(result).toEqual({ error: "Too many requests. Please try again later." });
   });
 
   it("sends OTP on valid request", async () => {
     vi.mocked(auth.checkOTPRateLimit).mockResolvedValueOnce(true);
-    const result = await requestOTP("9876543210");
+    const result = await requestOTP("user@example.com");
     expect(result).toEqual({ success: true });
-    expect(auth.storeOTP).toHaveBeenCalledWith("9876543210", "123456");
-    expect(auth.sendOTP).toHaveBeenCalledWith("9876543210", "123456");
+    expect(auth.storeOTP).toHaveBeenCalledWith("user@example.com", "123456");
   });
 });
 
 describe("verifyLoginOTP", () => {
-  it("returns error for invalid phone or OTP format", async () => {
+  it("returns error for invalid email or OTP format", async () => {
     const result = await verifyLoginOTP("", "");
-    expect(result).toEqual({ error: "Invalid phone or OTP format" });
+    expect(result).toEqual({ error: "Invalid email or OTP format" });
   });
 
   it("returns error when verify rate limited", async () => {
     vi.mocked(auth.checkVerifyRateLimit).mockResolvedValueOnce(false);
-    const result = await verifyLoginOTP("9876543210", "123456");
+    const result = await verifyLoginOTP("user@example.com", "123456");
     expect(result).toEqual({ error: "Too many attempts. Please try again later." });
   });
 
   it("returns error for invalid OTP", async () => {
     vi.mocked(auth.checkVerifyRateLimit).mockResolvedValueOnce(true);
     vi.mocked(auth.verifyOTP).mockResolvedValueOnce(false);
-    const result = await verifyLoginOTP("9876543210", "000000");
+    const result = await verifyLoginOTP("user@example.com", "000000");
     expect(result).toEqual({ error: "Invalid or expired OTP" });
   });
 
@@ -101,9 +108,9 @@ describe("verifyLoginOTP", () => {
     const mockFind = vi.mocked(prisma.user.findUnique);
     mockFind.mockResolvedValueOnce(null);
     const mockCreate = vi.mocked(prisma.user.create);
-    mockCreate.mockResolvedValueOnce({ id: "new-id", phone: "9876543210", role: "WORKER", status: "ACTIVE" } as any);
+    mockCreate.mockResolvedValueOnce({ id: "new-id", email: "user@example.com", role: "WORKER", status: "ACTIVE" } as any);
 
-    const result = await verifyLoginOTP("9876543210", "123456");
+    const result = await verifyLoginOTP("user@example.com", "123456");
     expect(result).toEqual({ success: true, role: "WORKER", userId: "new-id" });
     expect(auth.signToken).toHaveBeenCalled();
     expect(auth.setAuthCookie).toHaveBeenCalledWith("mock-token");
@@ -113,9 +120,9 @@ describe("verifyLoginOTP", () => {
     vi.mocked(auth.checkVerifyRateLimit).mockResolvedValueOnce(true);
     vi.mocked(auth.verifyOTP).mockResolvedValueOnce(true);
     const mockFind = vi.mocked(prisma.user.findUnique);
-    mockFind.mockResolvedValueOnce({ id: "suspended-id", phone: "9876543210", role: "WORKER", status: "SUSPENDED" } as any);
+    mockFind.mockResolvedValueOnce({ id: "suspended-id", email: "user@example.com", role: "WORKER", status: "SUSPENDED" } as any);
 
-    const result = await verifyLoginOTP("9876543210", "123456");
+    const result = await verifyLoginOTP("user@example.com", "123456");
     expect(result).toEqual({ error: "Your account has been suspended" });
   });
 });

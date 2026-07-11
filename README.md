@@ -7,7 +7,7 @@ Production-grade blue-collar hiring platform connecting industrial workers with 
 - **Framework**: Next.js 16.2.9 (App Router)
 - **Language**: TypeScript (strict mode, zero `any`)
 - **Database**: PostgreSQL + Prisma 7 ORM
-- **Auth**: JWT (7-day expiry) + Phone OTP (via MSG91)
+- **Auth**: JWT (7-day expiry) + Email OTP (via Resend)
 - **Cache**: Upstash Redis (OTP storage, rate limiting)
 - **Payments**: Razorpay
 - **Uploads**: Local filesystem (`public/uploads/`)
@@ -19,7 +19,7 @@ Production-grade blue-collar hiring platform connecting industrial workers with 
 - Node.js 20+
 - PostgreSQL 15+
 - Upstash Redis account (or local Redis)
-- MSG91 account (for OTP)
+- Resend account (for email OTP)
 - Razorpay account (for payments)
 
 ## Setup
@@ -54,7 +54,8 @@ See `.env.example` for all required vars. Key ones:
 | `UPSTASH_REDIS_REST_TOKEN` | ✅ | Redis auth token |
 | `RAZORPAY_KEY_ID` | ⬜ | Required for payments |
 | `RAZORPAY_KEY_SECRET` | ⬜ | Required for payments |
-| `MSG91_AUTH_KEY` | ⬜ | Required for OTP SMS |
+| `RESEND_API_KEY` | ⬜ | Required for email OTP |
+| `EMAIL_FROM` | ⬜ | Sender email for OTP |
 
 ## Scripts
 

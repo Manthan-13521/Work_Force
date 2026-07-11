@@ -13,10 +13,10 @@ const envSchema = z.object({
   // Auth (always required)
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
 
-  // Messaging (OTP)
-  MSG91_AUTH_KEY: z.string().optional(),
-  MSG91_SENDER_ID: z.string().optional(),
-  MSG91_TEMPLATE_ID: z.string().optional(),
+  // Email (OTP delivery via Resend)
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().email("EMAIL_FROM must be a valid email").optional(),
+  EMAIL_REPLY_TO: z.string().email("EMAIL_REPLY_TO must be a valid email").optional(),
 
   // Media
   CLOUDINARY_CLOUD_NAME: z.string().optional(),

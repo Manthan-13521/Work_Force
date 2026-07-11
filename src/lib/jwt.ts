@@ -7,7 +7,7 @@ function getJwtSecret(): string {
 
 export type JWTPayload = {
   userId: string;
-  phone: string;
+  email: string;
   role: string;
 };
 
@@ -20,7 +20,7 @@ function isJWTPayload(payload: unknown): payload is JWTPayload {
     typeof payload === "object" &&
     payload !== null &&
     "userId" in payload &&
-    "phone" in payload &&
+    "email" in payload &&
     "role" in payload
   );
 }

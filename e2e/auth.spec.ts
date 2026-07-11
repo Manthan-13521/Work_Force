@@ -1,15 +1,15 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Login / OTP flow", () => {
-  test("login page has phone input and submit button", async ({ page }) => {
+  test("login page has email input and submit button", async ({ page }) => {
     await page.goto("/login");
-    const input = page.locator("input[type=tel], input[name=phone]").first();
+    const input = page.locator("input[type=email]").first();
     await expect(input).toBeVisible();
     const submit = page.locator("button[type=submit]").first();
     await expect(submit).toBeVisible();
   });
 
-  test("login with empty phone shows validation error", async ({ page }) => {
+  test("login with empty email shows validation error", async ({ page }) => {
     await page.goto("/login");
     const submit = page.locator("button[type=submit]").first();
     await submit.click();

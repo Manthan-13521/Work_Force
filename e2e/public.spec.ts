@@ -51,9 +51,9 @@ test.describe("Navigation", () => {
 });
 
 test.describe("Auth pages", () => {
-  test("login page loads with phone input", async ({ page }) => {
+  test("login page loads with email input", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.locator("input[type=tel], input[name=phone]").first()).toBeVisible();
+    await expect(page.locator("input[type=email]").first()).toBeVisible();
   });
 
   test("register page loads with role selection", async ({ page }) => {

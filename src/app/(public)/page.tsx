@@ -115,7 +115,7 @@ export default async function HomePage() {
                 For Workers
               </div>
               {[
-                { step: "01", title: "Create your profile", desc: "Sign up with phone OTP in under 2 minutes. Add your trade, experience, and preferences." },
+                { step: "01", title: "Create your profile", desc: "Sign up with email OTP in under 2 minutes. Add your trade, experience, and preferences." },
                 { step: "02", title: "Browse and apply", desc: "Find factory jobs near you by location, trade, and salary range. Apply with one tap." },
                 { step: "03", title: "Get hired", desc: "Employers shortlist and contact verified workers directly. No middlemen." },
               ].map((item) => (
@@ -224,7 +224,7 @@ export default async function HomePage() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { icon: Shield, title: "OTP verified", desc: "Every user is verified with phone OTP &mdash; no fake accounts" },
+              { icon: Shield, title: "OTP verified", desc: "Every user is verified with email OTP &mdash; no fake accounts" },
               { icon: Star, title: "Employer verification", desc: "Companies are reviewed before they can post jobs" },
               { icon: Clock, title: "Active jobs only", desc: "Listings auto-expire so you never see stale posts" },
               { icon: Search, title: "Report system", desc: "Flag suspicious listings instantly &mdash; we take action" },

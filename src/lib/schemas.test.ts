@@ -18,42 +18,34 @@ import {
 } from "./schemas";
 
 describe("requestOtpSchema", () => {
-  it("accepts valid 10-digit phone", () => {
-    expect(requestOtpSchema.safeParse({ phone: "9876543210" }).success).toBe(true);
+  it("accepts valid email", () => {
+    expect(requestOtpSchema.safeParse({ email: "user@example.com" }).success).toBe(true);
   });
 
-  it("rejects short phone", () => {
-    expect(requestOtpSchema.safeParse({ phone: "12345" }).success).toBe(false);
+  it("rejects invalid email", () => {
+    expect(requestOtpSchema.safeParse({ email: "not-an-email" }).success).toBe(false);
   });
 
-  it("rejects non-digit phone", () => {
-    expect(requestOtpSchema.safeParse({ phone: "phone12345" }).success).toBe(false);
-  });
-
-  it("rejects phone starting with 0", () => {
-    expect(requestOtpSchema.safeParse({ phone: "0123456789" }).success).toBe(false);
-  });
-
-  it("rejects phone starting with 5", () => {
-    expect(requestOtpSchema.safeParse({ phone: "5123456789" }).success).toBe(false);
+  it("rejects missing @", () => {
+    expect(requestOtpSchema.safeParse({ email: "userexample.com" }).success).toBe(false);
   });
 });
 
 describe("verifyOtpSchema", () => {
-  it("accepts valid phone + 6-digit OTP", () => {
-    expect(verifyOtpSchema.safeParse({ phone: "9876543210", otp: "123456" }).success).toBe(true);
+  it("accepts valid email + 6-digit OTP", () => {
+    expect(verifyOtpSchema.safeParse({ email: "user@example.com", otp: "123456" }).success).toBe(true);
   });
 
   it("rejects non-6-digit OTP", () => {
-    expect(verifyOtpSchema.safeParse({ phone: "9876543210", otp: "12345" }).success).toBe(false);
+    expect(verifyOtpSchema.safeParse({ email: "user@example.com", otp: "12345" }).success).toBe(false);
   });
 
   it("rejects empty OTP", () => {
-    expect(verifyOtpSchema.safeParse({ phone: "9876543210", otp: "" }).success).toBe(false);
+    expect(verifyOtpSchema.safeParse({ email: "user@example.com", otp: "" }).success).toBe(false);
   });
 
   it("rejects OTP with letters", () => {
-    expect(verifyOtpSchema.safeParse({ phone: "9876543210", otp: "abc123" }).success).toBe(false);
+    expect(verifyOtpSchema.safeParse({ email: "user@example.com", otp: "abc123" }).success).toBe(false);
   });
 });
 

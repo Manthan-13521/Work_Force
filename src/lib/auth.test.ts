@@ -29,14 +29,14 @@ import { generateOTP } from "./utils";
 
 describe("signToken / verifyToken", () => {
   it("signs and verifies a valid token", () => {
-    const payload = { userId: "abc123", phone: "9876543210", role: "WORKER" };
+    const payload = { userId: "abc123", email: "worker@example.com", role: "WORKER" };
     const token = signToken(payload);
     expect(typeof token).toBe("string");
 
     const decoded = verifyToken(token);
     expect(decoded).not.toBeNull();
     expect(decoded!.userId).toBe("abc123");
-    expect(decoded!.phone).toBe("9876543210");
+    expect(decoded!.email).toBe("worker@example.com");
     expect(decoded!.role).toBe("WORKER");
   });
 
@@ -45,7 +45,7 @@ describe("signToken / verifyToken", () => {
   });
 
   it("returns null for tampered token", () => {
-    const token = signToken({ userId: "abc", phone: "9876543210", role: "WORKER" });
+    const token = signToken({ userId: "abc", email: "worker@example.com", role: "WORKER" });
     const tampered = token.slice(0, -5) + "xxxxx";
     expect(verifyToken(tampered)).toBeNull();
   });
@@ -70,10 +70,10 @@ describe("generateOTP", () => {
 
 describe("verifyToken type guard", () => {
   it("rejects token with missing fields", () => {
-    const token = signToken({ userId: "abc", phone: "9876543210", role: "WORKER" });
+    const token = signToken({ userId: "abc", email: "worker@example.com", role: "WORKER" });
     const decoded = verifyToken(token);
     expect(decoded).toHaveProperty("userId");
-    expect(decoded).toHaveProperty("phone");
+    expect(decoded).toHaveProperty("email");
     expect(decoded).toHaveProperty("role");
   });
 });

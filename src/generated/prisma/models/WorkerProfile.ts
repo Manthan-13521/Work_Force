@@ -599,10 +599,6 @@ export type WorkerProfileUpdatelanguagesInput = {
   push?: string | string[]
 }
 
-export type BoolFieldUpdateOperationsInput = {
-  set?: boolean
-}
-
 export type FloatFieldUpdateOperationsInput = {
   set?: number
   increment?: number

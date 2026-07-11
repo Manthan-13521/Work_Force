@@ -4,14 +4,14 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { PhoneInput } from "@/components/shared/phone-input";
+import { Input } from "@/components/ui/input";
 import { requestOTP, verifyLoginOTP } from "@/actions/auth.actions";
-import { Shield, ArrowLeft } from "lucide-react";
+import { Shield, ArrowLeft, Mail } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [step, setStep] = useState<"phone" | "otp">("phone");
-  const [phone, setPhone] = useState("");
+  const [step, setStep] = useState<"email" | "otp">("email");
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -19,10 +19,10 @@ export default function LoginPage() {
 
   async function handleRequestOTP(e: React.FormEvent) {
     e.preventDefault();
-    if (phone.length !== 10) return setError("Enter a valid 10-digit phone number");
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError("Enter a valid email address");
     setLoading(true);
     setError("");
-    const result = await requestOTP(phone);
+    const result = await requestOTP(email);
     setLoading(false);
     if (result?.error) return setError(result.error);
     setStep("otp");
@@ -35,7 +35,7 @@ export default function LoginPage() {
     if (code.length !== 6) return setError("Enter the complete 6-digit OTP");
     setLoading(true);
     setError("");
-    const result = await verifyLoginOTP(phone, code);
+    const result = await verifyLoginOTP(email, code);
     setLoading(false);
     if (result?.error) return setError(result.error);
     if (result.role === "WORKER") router.push("/worker/dashboard");
@@ -79,25 +79,35 @@ export default function LoginPage() {
           <span className="text-xl font-bold text-primary-foreground">W</span>
         </div>
         <h1 className="text-xl font-bold tracking-tight mb-1">
-          {step === "phone" ? "Welcome back" : "Check your phone"}
+          {step === "email" ? "Welcome back" : "Check your email"}
         </h1>
         <p className="text-sm text-muted-foreground">
-          {step === "phone"
-            ? "Enter your phone number to login"
-            : `We sent a code to +91 ${phone}`}
+          {step === "email"
+            ? "Enter your email address to login"
+            : `We sent a code to ${email}`}
         </p>
       </div>
 
       <div className="rounded-xl border bg-card p-5 shadow-sm">
-        {step === "phone" ? (
+        {step === "email" ? (
           <form onSubmit={handleRequestOTP} className="space-y-4">
-            <PhoneInput
-              id="login-phone"
-              value={phone}
-              onChange={setPhone}
-              error={error}
-              placeholder="Enter your phone number"
-            />
+            <div className="space-y-2">
+              <label htmlFor="login-email" className="text-sm font-medium">Email</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="login-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="pl-9"
+                  autoComplete="email"
+                  autoFocus
+                />
+              </div>
+              {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+            </div>
             <Button type="submit" className="w-full" loading={loading}>
               Continue with OTP
             </Button>
@@ -140,11 +150,11 @@ export default function LoginPage() {
             </Button>
             <button
               type="button"
-              onClick={() => { setStep("phone"); setOtp(["", "", "", "", "", ""]); setError(""); }}
+              onClick={() => { setStep("email"); setOtp(["", "", "", "", "", ""]); setError(""); }}
               className="w-full flex items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              Change phone number
+              Change email address
             </button>
           </form>
         )}

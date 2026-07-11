@@ -1,8 +1,10 @@
 import { NextRequest } from "next/server";
 import { generateOTP } from "@/lib/utils";
-import { storeOTP, sendOTP, checkOTPRateLimit } from "@/lib/auth";
+import { storeOTP, checkOTPRateLimit } from "@/lib/auth";
 import { checkRateLimit } from "@/lib/redis";
 import { apiSuccess, apiError, apiServerError } from "@/lib/api-response";
+import { sendEmail, renderOtpEmail } from "@/lib/email";
+import { env } from "@/env";
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,21 +14,28 @@ export async function POST(request: NextRequest) {
       return apiError("Too many requests. Please try again later.", 429, "RATE_LIMITED");
     }
 
-    const { phone } = await request.json();
-    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
-      return apiError("Invalid phone number", 400, "INVALID_PHONE");
+    const { email } = await request.json();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return apiError("Invalid email address", 400, "INVALID_EMAIL");
     }
 
-    const allowed = await checkOTPRateLimit(phone);
+    const allowed = await checkOTPRateLimit(email);
     if (!allowed) {
       return apiError("Too many requests. Please try again later.", 429, "RATE_LIMITED");
     }
 
     const otp = generateOTP();
-    await storeOTP(phone, otp);
-    await sendOTP(phone, otp);
+    await storeOTP(email, otp);
 
-    return apiSuccess({ phone });
+    if (env.NODE_ENV !== "development") {
+      await sendEmail({
+        to: email,
+        subject: "Your Workforce verification code",
+        html: renderOtpEmail(otp, 10),
+      });
+    }
+
+    return apiSuccess({ email });
   } catch {
     return apiServerError("Failed to send OTP");
   }

@@ -63,7 +63,7 @@ export default async function AdminUsersPage(props: { searchParams: Promise<Reco
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
-                        {(u.name || u.phone)[0]}
+                        {(u.name || u.phone || "?")[0]}
                       </div>
                       <div>
                         <p className="font-medium">{u.name || "Unnamed"}</p>

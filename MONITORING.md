@@ -62,9 +62,9 @@
 4. Check database payment records
 
 ### OTP Delivery Issues
-1. Check MSG91 dashboard credits
-2. Check MSG91 circuit breaker status
-3. Verify MSG91 env vars
+1. Check Resend dashboard credits
+2. Check Resend email delivery status
+3. Verify Resend API keys
 4. Check Redis connectivity
 
 ## Deployment Checklist
@@ -114,7 +114,7 @@ Metrics are logged every 60 seconds in this format:
   "message": "Metrics snapshot",
   "metrics": [
     { "metric": "prisma:User.findUnique", "count": 42, "avgMs": 5, "failures": 0 },
-    { "metric": "msg91.send", "count": 3, "avgMs": 1200, "failures": 0 }
+    { "metric": "resend.email.send", "count": 3, "avgMs": 1200, "failures": 0 }
   ]
 }
 ```

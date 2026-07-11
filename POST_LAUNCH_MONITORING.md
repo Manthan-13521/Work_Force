@@ -15,7 +15,7 @@
 | Every 1h | Upstash command throughput | Scale if approaching limit |
 | Every 4h | Vercel function duration p95 | Optimize if >2s |
 | Every 4h | Payment success rate | Investigate if <98% |
-| Every 4h | OTP delivery success | Check MSG91 if <95% |
+| Every 4h | OTP delivery success | Check Resend if <95% |
 | Every 8h | Deploy a small change | Verify pipeline works |
 | Every 12h | Memory trend | Investigate leak if growing |
 | 24h | Full metrics review | All criteria must pass |
@@ -57,7 +57,7 @@
 | Payment failure | P0 | >5% failure rate | Page on-call |
 | DB pool exhausted | P1 | >80% pool | Scale Neon |
 | Slow queries | P1 | >1s duration | Check indexes |
-| OTP failure | P1 | >5% failure | Check MSG91 |
+| OTP failure | P1 | >5% failure | Check Resend |
 | Circuit breaker open | P2 | Any service | Check provider |
 | Memory >80% | P2 | RSS limit | Investigate leak |
 

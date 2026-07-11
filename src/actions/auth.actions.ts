@@ -1,44 +1,62 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { signToken, setAuthCookie, removeAuthCookie, storeOTP, verifyOTP, sendOTP, checkOTPRateLimit, checkVerifyRateLimit, requireAuth } from "@/lib/auth";
+import { signToken, setAuthCookie, removeAuthCookie, storeOTP, verifyOTP, checkOTPRateLimit, checkVerifyRateLimit, requireAuth } from "@/lib/auth";
 import { generateOTP } from "@/lib/utils";
 import { redirect } from "next/navigation";
 import { requestOtpSchema, verifyOtpSchema, completeWorkerSchema, completeEmployerSchema } from "@/lib/schemas";
 import { recordAuditEvent } from "@/lib/audit";
+import { sendEmail, renderOtpEmail } from "@/lib/email";
+import { env } from "@/env";
 
-export async function requestOTP(phone: string) {
-  const parsed = requestOtpSchema.safeParse({ phone });
-  if (!parsed.success) return { error: "Invalid phone number" };
+export async function requestOTP(email: string) {
+  const parsed = requestOtpSchema.safeParse({ email });
+  if (!parsed.success) return { error: "Invalid email address" };
 
-  const phoneAllowed = await checkOTPRateLimit(parsed.data.phone);
-  if (!phoneAllowed) return { error: "Too many requests. Please try again later." };
+  const allowed = await checkOTPRateLimit(parsed.data.email);
+  if (!allowed) return { error: "Too many requests. Please try again later." };
 
   const otp = generateOTP();
-  await storeOTP(parsed.data.phone, otp);
-  await sendOTP(parsed.data.phone, otp);
-  await recordAuditEvent({ action: "OTP_SENT", actorId: null, actorRole: null, resource: "phone", resourceId: parsed.data.phone });
+  await storeOTP(parsed.data.email, otp);
+
+  if (env.NODE_ENV === "development") {
+    return { success: true };
+  }
+
+  const sent = await sendEmail({
+    to: parsed.data.email,
+    subject: "Your Workforce verification code",
+    html: renderOtpEmail(otp, 10),
+  });
+  if (!sent) return { error: "Failed to send OTP. Please try again." };
+
+  await recordAuditEvent({ action: "OTP_SENT", actorId: null, actorRole: null, resource: "email", resourceId: parsed.data.email });
   return { success: true };
 }
 
-export async function verifyLoginOTP(phone: string, otp: string) {
-  const parsed = verifyOtpSchema.safeParse({ phone, otp });
-  if (!parsed.success) return { error: "Invalid phone or OTP format" };
+export async function verifyLoginOTP(email: string, otp: string) {
+  const parsed = verifyOtpSchema.safeParse({ email, otp });
+  if (!parsed.success) return { error: "Invalid email or OTP format" };
 
-  const allowed = await checkVerifyRateLimit(parsed.data.phone);
+  const allowed = await checkVerifyRateLimit(parsed.data.email);
   if (!allowed) return { error: "Too many attempts. Please try again later." };
 
-  const isValid = await verifyOTP(parsed.data.phone, parsed.data.otp);
+  const isValid = await verifyOTP(parsed.data.email, parsed.data.otp);
   if (!isValid) return { error: "Invalid or expired OTP" };
 
   let user = await prisma.user.findUnique({
-    where: { phone: parsed.data.phone },
-    select: { id: true, phone: true, role: true, status: true },
+    where: { email: parsed.data.email },
+    select: { id: true, email: true, emailVerified: true, role: true, status: true },
   });
 
   if (!user) {
     user = await prisma.user.create({
-      data: { phone: parsed.data.phone, role: "WORKER" },
+      data: { email: parsed.data.email, emailVerified: true, role: "WORKER" },
+    });
+  } else if (!user.emailVerified) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerified: true },
     });
   }
 
@@ -46,7 +64,7 @@ export async function verifyLoginOTP(phone: string, otp: string) {
     return { error: "Your account has been suspended" };
   }
 
-  const token = signToken({ userId: user.id, phone: user.phone, role: user.role });
+  const token = signToken({ userId: user.id, email: user.email, role: user.role });
   await setAuthCookie(token);
 
   await recordAuditEvent({ action: "LOGIN", actorId: user.id, actorRole: user.role, resource: "user", resourceId: user.id });

@@ -51,7 +51,6 @@ async function main() {
     RAZORPAY_KEY_ID,
     RAZORPAY_KEY_SECRET,
     RAZORPAY_WEBHOOK_SECRET,
-    MSG91_AUTH_KEY,
     SENTRY_DSN,
     NEXT_PUBLIC_APP_URL,
   } = process.env;
@@ -114,21 +113,6 @@ async function main() {
     );
   } else {
     results.push({ service: "Razorpay", status: "skip" });
-  }
-
-  // MSG91
-  if (MSG91_AUTH_KEY) {
-    results.push(
-      await check("MSG91", async () => {
-        const res = await fetch(
-          `https://api.msg91.com/api/v5/otp?authkey=${MSG91_AUTH_KEY}&mobile=0000000000`,
-          { method: "GET" }
-        );
-        return [200, 412, 422].includes(res.status);
-      }, required)
-    );
-  } else {
-    results.push({ service: "MSG91", status: "skip" });
   }
 
   // Production env vars

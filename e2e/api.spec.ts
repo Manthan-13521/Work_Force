@@ -23,22 +23,22 @@ test.describe("API health", () => {
 });
 
 test.describe("API OTP", () => {
-  test("OTP send with invalid phone returns 400", async ({ request }) => {
+  test("OTP send with invalid email returns 400", async ({ request }) => {
     const res = await request.post("/api/otp/send", {
-      data: { phone: "123" },
+      data: { email: "not-an-email" },
     });
     expect(res.status()).toBe(400);
   });
 
-  test("OTP send with valid phone returns success or rate limited", async ({ request }) => {
+  test("OTP send with valid email returns success or rate limited", async ({ request }) => {
     const res = await request.post("/api/otp/send", {
-      data: { phone: "9876543210" },
+      data: { email: "user@example.com" },
     });
     // Either success or rate-limited (429) is acceptable
     expect([200, 429]).toContain(res.status());
   });
 
-  test("OTP send without phone returns 400", async ({ request }) => {
+  test("OTP send without email returns 400", async ({ request }) => {
     const res = await request.post("/api/otp/send", {
       data: {},
     });

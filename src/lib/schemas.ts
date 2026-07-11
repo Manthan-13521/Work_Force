@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const phoneSchema = z.string().regex(/^[6-9]\d{9}$/, "Phone must be 10 digits starting with 6-9");
+export const emailSchema = z.string().email("Invalid email address");
 
 export const otpSchema = z.string().regex(/^\d{6}$/, "OTP must be 6 digits");
 
@@ -9,11 +9,11 @@ export const tradeSchema = z.string().min(1, "Trade is required");
 export const citySchema = z.string().min(1, "City is required");
 
 export const requestOtpSchema = z.object({
-  phone: phoneSchema,
+  email: emailSchema,
 });
 
 export const verifyOtpSchema = z.object({
-  phone: phoneSchema,
+  email: emailSchema,
   otp: otpSchema,
 });
 
