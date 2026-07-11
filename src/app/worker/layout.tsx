@@ -4,8 +4,7 @@ import { cacheKey } from "@/lib/cache";
 import { cached } from "@/lib/cache/cache";
 import { TTL } from "@/lib/cache/ttl";
 import { prisma } from "@/lib/prisma";
-import { Sidebar } from "@/components/layout/sidebar";
-import { LayoutDashboard, FileText, User } from "lucide-react";
+import { WorkerLayoutClient } from "@/components/layout/worker-layout-client";
 
 export default async function WorkerLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -22,16 +21,5 @@ export default async function WorkerLayout({ children }: { children: React.React
     { freshTtl: TTL.NOTIFICATION_COUNT.fresh, staleTtl: TTL.NOTIFICATION_COUNT.stale },
   );
 
-  const links = [
-    { href: "/worker/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/worker/applications", label: "My Applications", icon: FileText },
-    { href: "/worker/profile", label: "Profile", icon: User },
-  ];
-
-  return (
-    <div className="min-h-screen flex">
-      <Sidebar links={links} title="Workforce" subtitle="Worker" unreadNotifications={unreadNotifications} />
-      <main className="flex-1 min-w-0">{children}</main>
-    </div>
-  );
+  return <WorkerLayoutClient unreadNotifications={unreadNotifications}>{children}</WorkerLayoutClient>;
 }

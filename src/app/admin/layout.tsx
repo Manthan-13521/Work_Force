@@ -4,8 +4,7 @@ import { cacheKey } from "@/lib/cache";
 import { cached } from "@/lib/cache/cache";
 import { TTL } from "@/lib/cache/ttl";
 import { prisma } from "@/lib/prisma";
-import { Sidebar } from "@/components/layout/sidebar";
-import { LayoutDashboard, Users, FileText, AlertTriangle, CreditCard, Tags, CheckSquare } from "lucide-react";
+import { AdminLayoutClient } from "@/components/layout/admin-layout-client";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -18,20 +17,5 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { freshTtl: TTL.NOTIFICATION_COUNT.fresh, staleTtl: TTL.NOTIFICATION_COUNT.stale },
   );
 
-  const links = [
-    { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/users", label: "Users", icon: Users },
-    { href: "/admin/jobs", label: "Jobs", icon: FileText },
-    { href: "/admin/reports", label: "Reports", icon: AlertTriangle },
-    { href: "/admin/payments", label: "Payments", icon: CreditCard },
-    { href: "/admin/categories", label: "Categories", icon: Tags },
-    { href: "/admin/approvals", label: "Approvals", icon: CheckSquare },
-  ];
-
-  return (
-    <div className="min-h-screen flex">
-      <Sidebar links={links} title="Workforce" subtitle="Admin Panel" unreadNotifications={unreadNotifications} />
-      <main className="flex-1 min-w-0">{children}</main>
-    </div>
-  );
+  return <AdminLayoutClient unreadNotifications={unreadNotifications}>{children}</AdminLayoutClient>;
 }
